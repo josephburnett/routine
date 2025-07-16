@@ -92,6 +92,6 @@ class MetricsController < ApplicationController
   end
 
   def metric_params
-    params.require(:metric).permit(:name, :function, :resolution, :width, :wrap, :scale, :first_metric_id, :namespace, question_ids: [], child_metric_ids: [])
+    params.require(:metric).permit(:name, :function, :resolution, :width, :wrap, :scale, :first_metric_id, :namespace, :fill, question_ids: [], child_metric_ids: [])
   end
 end

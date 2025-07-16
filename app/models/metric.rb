@@ -26,6 +26,7 @@ class Metric < ApplicationRecord
   validates :function, presence: true, inclusion: { in: %w[answer sum average difference count] }
   validates :wrap, inclusion: { in: %w[none hour day weekly] }, allow_nil: true, allow_blank: true
   validates :scale, numericality: { greater_than: 0 }, allow_nil: true
+  validates :fill, inclusion: { in: %w[none zero linear previous] }, allow_nil: true
 
   attr_accessor :child_metric_ids_temp, :child_metric_ids_changed
 
@@ -168,7 +169,7 @@ class Metric < ApplicationRecord
     all_bucket_times = rebucketed_sources.flat_map { |series| series.map(&:first) }.uniq.sort
 
     # For each time bucket, apply the function across all sources
-    all_bucket_times.map do |bucket_time|
+    raw_series = all_bucket_times.map do |bucket_time|
       # Get values from each source for this time bucket
       source_values = rebucketed_sources.map do |series|
         bucket = series.find { |time, value| time == bucket_time }
@@ -180,8 +181,8 @@ class Metric < ApplicationRecord
 
       # Apply the function
       if available_values.empty?
-        # If no sources have data for this bucket, skip it
-        nil
+        # If no sources have data for this bucket, return nil
+        [ bucket_time, nil ]
       else
         result_value = case target_function
         when "sum"
@@ -195,7 +196,10 @@ class Metric < ApplicationRecord
 
         [ bucket_time, result_value ]
       end
-    end.compact
+    end
+
+    # Apply fill logic to the raw series
+    apply_fill_logic(raw_series)
   end
 
   def generate_question_series(question)
@@ -229,21 +233,21 @@ class Metric < ApplicationRecord
       grouped_answers = group_by_resolution(filtered_answers)
       all_buckets = generate_time_buckets
 
-      previous_value = nil
-      all_buckets.map do |bucket_time|
+      # Generate raw series data with actual values
+      raw_series = all_buckets.map do |bucket_time|
         if grouped_answers.has_key?(bucket_time)
           group_answers = grouped_answers[bucket_time]
           values = group_answers.map { |answer| numeric_value(answer) }
           value = values.sum.to_f / values.size
           scaled_value = value * (scale || 1.0)
-          previous_value = scaled_value
           [ bucket_time, scaled_value ]
-        elsif previous_value
-          [ bucket_time, previous_value ]
         else
-          nil
+          [ bucket_time, nil ]
         end
-      end.compact
+      end
+
+      # Apply fill logic
+      apply_fill_logic(raw_series)
     end
   end
 
@@ -341,15 +345,14 @@ class Metric < ApplicationRecord
         [ wrapped_time, averaged_value ]
       end.sort_by(&:first)
     else
-      # Use bucketing for non-wrapped data with previous value maintenance
+      # Use bucketing for non-wrapped data
       grouped_answers = group_by_resolution(filtered_answers)
 
       # Generate all time buckets in the range
       all_buckets = generate_time_buckets
 
-      # Fill buckets with data, maintaining previous values for missing data
-      previous_value = nil
-      all_buckets.map do |bucket_time|
+      # Generate raw series data with actual values
+      raw_series = all_buckets.map do |bucket_time|
         if grouped_answers.has_key?(bucket_time)
           # Bucket has data - calculate average
           group_answers = grouped_answers[bucket_time]
@@ -358,17 +361,14 @@ class Metric < ApplicationRecord
 
           # Apply scale factor for answer metrics
           scaled_value = value * (scale || 1.0)
-          previous_value = scaled_value  # Update previous value
-
           [ bucket_time, scaled_value ]
-        elsif previous_value
-          # No data in this bucket - maintain previous value
-          [ bucket_time, previous_value ]
         else
-          # No data and no previous value - skip this bucket
-          nil
+          [ bucket_time, nil ]
         end
-      end.compact
+      end
+
+      # Apply fill logic
+      apply_fill_logic(raw_series)
     end
   end
 
@@ -577,6 +577,87 @@ class Metric < ApplicationRecord
   end
 
   private
+
+  def apply_fill_logic(raw_series)
+    fill_method = fill || "none"
+
+    case fill_method
+    when "none"
+      # Return only buckets with actual data
+      raw_series.select { |bucket_time, value| value != nil }
+    when "zero"
+      # Fill missing values with 0.0
+      raw_series.map { |bucket_time, value| [ bucket_time, value || 0.0 ] }
+    when "previous"
+      # Fill missing values with previous value
+      previous_value = nil
+      raw_series.map do |bucket_time, value|
+        if value != nil
+          previous_value = value
+          [ bucket_time, value ]
+        elsif previous_value != nil
+          [ bucket_time, previous_value ]
+        else
+          nil
+        end
+      end.compact
+    when "linear"
+      # Fill missing values with linear interpolation
+      apply_linear_interpolation(raw_series)
+    else
+      # Default to 'none' behavior
+      raw_series.select { |bucket_time, value| value != nil }
+    end
+  end
+
+  def apply_linear_interpolation(raw_series)
+    result = []
+
+    # Find all non-nil values with their indices
+    non_nil_indices = []
+    raw_series.each_with_index do |bucket_data, index|
+      bucket_time, value = bucket_data
+      if value != nil
+        non_nil_indices << { index: index, time: bucket_time, value: value }
+      end
+    end
+
+    return [] if non_nil_indices.empty?
+
+    raw_series.each_with_index do |bucket_data, index|
+      bucket_time, value = bucket_data
+
+      if value != nil
+        # Use actual value
+        result << [ bucket_time, value ]
+      else
+        # Find surrounding non-nil values
+        left_point = non_nil_indices.reverse.find { |point| point[:index] < index }
+        right_point = non_nil_indices.find { |point| point[:index] > index }
+
+        if left_point && right_point
+          # Linear interpolation between two points
+          x0, y0 = left_point[:index], left_point[:value]
+          x1, y1 = right_point[:index], right_point[:value]
+
+          # Calculate interpolated value
+          interpolated_value = y0 + (y1 - y0) * (index - x0) / (x1 - x0)
+          result << [ bucket_time, interpolated_value ]
+        elsif left_point
+          # Only left point exists, use its value (like 'previous')
+          result << [ bucket_time, left_point[:value] ]
+        elsif right_point
+          # Only right point exists, use its value
+          result << [ bucket_time, right_point[:value] ]
+        else
+          # No surrounding points, skip this bucket
+          next
+        end
+      end
+    end
+
+    result
+  end
 
   def store_child_metric_ids
     # child_metric_ids_temp is already set by the setter

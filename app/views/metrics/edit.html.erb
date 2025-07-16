@@ -82,6 +82,12 @@
     <small style="display: block; color: #666; margin-top: 0.25rem;">Group data points by time pattern for overlay visualization</small>
   </div>
 
+  <div class="field">
+    <%= form.label :fill, "Fill missing data" %>
+    <%= form.select :fill, [['None', 'none'], ['Zero', 'zero'], ['Linear', 'linear'], ['Previous', 'previous']], { selected: @metric.fill || 'none' }, { required: false } %>
+    <small style="display: block; color: #666; margin-top: 0.25rem;">How to handle missing data points in the series</small>
+  </div>
+
 
       <div class="actions">
         <%= form.submit "Update Metric" %>
