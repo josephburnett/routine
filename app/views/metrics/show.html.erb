@@ -20,6 +20,7 @@
     <% if @metric.wrap.present? %>
       <p><strong>Wrap:</strong> <%= @metric.wrap %></p>
     <% end %>
+    <p><strong>Fill missing data:</strong> <%= @metric.fill || 'none' %></p>
     
     <% if @metric.function == 'answer' %>
       <% if @metric.scale.present? && @metric.scale != 1.0 %>

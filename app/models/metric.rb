@@ -41,6 +41,7 @@ class Metric < ApplicationRecord
   scope :not_deleted, -> { where(deleted: false) }
 
   after_update :invalidate_dependent_caches
+  after_update :invalidate_own_cache, if: :fill_changed?
   after_destroy :invalidate_dependent_caches
 
   def soft_delete!
@@ -679,5 +680,9 @@ class Metric < ApplicationRecord
 
   def invalidate_dependent_caches
     MetricDependencyService.invalidate_caches_for(self)
+  end
+
+  def invalidate_own_cache
+    metric_series_cache&.destroy
   end
 end
