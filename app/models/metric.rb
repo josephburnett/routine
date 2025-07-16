@@ -79,7 +79,12 @@ class Metric < ApplicationRecord
       return apply_function_across_sources_with_function(rebucketed_sources, "sum")
     end
 
-    # New behavior for sum, average, difference functions
+    # Difference function needs special handling for first_metric
+    if function == "difference"
+      return generate_difference_series_with_fill
+    end
+
+    # New behavior for sum, average functions
     # 1. Collect all source series (Questions and Metrics)
     source_series_list = collect_all_source_series
 
@@ -380,6 +385,48 @@ class Metric < ApplicationRecord
   def generate_average_series
     # Average all child metric values for each time bucket
     combine_metric_series { |values| values.empty? ? 0 : values.sum.to_f / values.size }
+  end
+
+  def generate_difference_series_with_fill
+    # Take first metric's values and subtract all others
+    return [] if child_metrics.empty?
+
+    # If first_metric is specified, use it; otherwise use first child metric
+    primary_metric = first_metric || child_metrics.first
+    other_metrics = child_metrics.where.not(id: primary_metric.id)
+
+    # Get series from primary and other metrics
+    primary_series = primary_metric.series
+    other_series = other_metrics.map(&:series)
+
+    # Generate time buckets based on this metric's resolution
+    time_buckets = generate_time_buckets
+
+    # Generate raw series with nil for missing data
+    raw_series = time_buckets.map do |bucket_start|
+      # Get primary metric value for this time bucket
+      primary_value = primary_series.select { |time_key, value|
+        time_key >= bucket_start && time_key < next_bucket_start(bucket_start)
+      }.sum { |time_key, value| value }
+
+      # Get sum of all other metrics for this time bucket
+      other_values = other_series.map do |series|
+        series.select { |time_key, value|
+          time_key >= bucket_start && time_key < next_bucket_start(bucket_start)
+        }.sum { |time_key, value| value }
+      end
+
+      # Only calculate difference if we have primary data
+      if primary_series.any? { |time_key, value| time_key >= bucket_start && time_key < next_bucket_start(bucket_start) }
+        difference_value = primary_value - other_values.sum
+        [ bucket_start, difference_value ]
+      else
+        [ bucket_start, nil ]
+      end
+    end
+
+    # Apply fill logic
+    apply_fill_logic(raw_series)
   end
 
   def generate_difference_series
