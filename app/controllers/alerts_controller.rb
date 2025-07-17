@@ -12,7 +12,7 @@ class AlertsController < ApplicationController
   def show
     # Cache the expensive series calculation to avoid multiple calls
     begin
-      @metric_series = @alert.metric.series.last(50)  # Limit to last 50 points for performance
+      @metric_series = @alert.metric.series  # Use full series like alert calculation
       @has_series_data = @metric_series.any?
       @latest_value = @metric_series.last&.last
     rescue => e
