@@ -79,9 +79,12 @@ class Metric < ApplicationRecord
       return apply_function_across_sources_with_function(rebucketed_sources, "sum")
     end
 
-    # Difference function needs special handling for first_metric
+    # Difference function
     if function == "difference"
-      return generate_difference_series_with_fill
+      # Use new behavior for difference functions
+      source_series_list = collect_all_source_series
+      rebucketed_sources = rebucket_sources_to_target_parameters(source_series_list)
+      return apply_function_across_sources_with_function(rebucketed_sources, "difference")
     end
 
     # New behavior for sum, average functions

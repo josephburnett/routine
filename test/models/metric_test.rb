@@ -316,6 +316,7 @@ class MetricTest < ActiveSupport::TestCase
 
   test "no data maintains previous value - buckets with no answers preserve last known value" do
     metric = create_metric(width: "daily", resolution: "hour")
+    metric.update!(fill: "previous")
 
     # Create answers with gaps
     base_time = @fixed_time.beginning_of_day
