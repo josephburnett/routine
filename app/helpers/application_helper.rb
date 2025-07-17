@@ -89,9 +89,9 @@ module ApplicationHelper
     # Include current namespace
     allowed = [ current_namespace ]
 
-    # Include all child namespaces (those that start with current namespace + ":")
+    # Include all child namespaces (those that start with current namespace + ".")
     child_namespaces = all_namespaces.select do |namespace|
-      namespace.start_with?("#{current_namespace}:")
+      namespace.start_with?("#{current_namespace}.")
     end
 
     allowed + child_namespaces
