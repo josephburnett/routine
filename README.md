@@ -1,10 +1,10 @@
 # Routine Tracker
 
-A Ruby on Rails application for tracking personal data and routines through customizable forms, with powerful analytics and visualization capabilities.
+A Ruby on Rails application for tracking personal data and routines through customizable forms, with powerful analytics, automated reporting, and comprehensive backup capabilities.
 
 ## Overview
 
-Routine Tracker helps you collect, organize, and analyze personal data through structured surveys and forms. Whether you're tracking health metrics, daily habits, mood patterns, or any other routine data, this application provides the tools to capture information consistently and gain insights through metrics and dashboards.
+Routine Tracker helps you collect, organize, and analyze personal data through structured surveys and forms. Whether you're tracking health metrics, daily habits, mood patterns, or any other routine data, this application provides the tools to capture information consistently and gain insights through metrics, dashboards, alerts, and automated reports.
 
 > **Self-Hosted Only**: This is a personal data tracking application designed for self-hosting. I don't provide a hosted service and don't want your data - you run it yourself, you control your data completely.
 
@@ -18,7 +18,7 @@ The application uses a hierarchical structure for organizing and collecting data
 Forms
 ├── Sections
     ├── Questions
-        └── Answers (stored in Responses)
+        └── Answers (stored in Responses OR standalone)
 ```
 
 #### **Forms**
@@ -44,8 +44,9 @@ Forms
 
 #### **Responses & Answers**
 - **Response**: A complete form submission session
-- **Answer**: Individual question responses within a response
+- **Answer**: Individual question responses within a response OR standalone adhoc answers
 - Each answer stores the actual data value based on question type
+- **Adhoc Answers**: Questions can be answered directly without being part of a form response
 
 ### Analytics & Visualization
 
@@ -65,6 +66,12 @@ Transform raw answer data into meaningful analytics:
 - **Time Width**:
   - `daily`, `7_days`, `weekly`, `30_days`, `monthly`, `90_days`, `yearly`, `all_time`
 
+- **Fill Missing Data**: Handle gaps in your data
+  - `none`: Only show actual data points
+  - `zero`: Fill gaps with zero values
+  - `previous`: Maintain the last known value
+  - `linear`: Interpolate between known values
+
 - **Wrap Functionality**: Overlay data by time patterns
   - `none`: Standard timeline view
   - `hour`: Show patterns within an hour (0-59 minutes)
@@ -76,41 +83,103 @@ Customizable views that can display:
 - Metrics with time-series visualizations
 - Quick-access question answering
 - Links to forms for easy data entry
+- Links to other dashboards for nested navigation
+- Alerts for monitoring important thresholds
 
 #### **Alerts**
-Automated notifications based on metric thresholds to help you stay on track with your routines.
+Smart monitoring system that tracks your metrics:
+- **Threshold Monitoring**: Get notified when metrics cross important values
+- **Flexible Conditions**: Above/below thresholds with configurable delay
+- **Multiple Data Points**: Require multiple consecutive readings before activation
+- **Visual Indicators**: Clear status with color coding
+- **Integration**: Can be included in dashboards and reports
+
+#### **Reports**
+Automated email reports to keep you informed:
+- **Scheduled Delivery**: Daily, weekly, or monthly reports
+- **Flexible Timing**: Choose specific times and days for delivery
+- **Content Mixing**: Combine multiple metrics and alerts in one report
+- **Manual Testing**: Send reports immediately to test configuration
+- **Rich Formatting**: HTML emails with charts and current values
+
+### Data Management
+
+#### **Backup System**
+Complete data protection with encrypted backups:
+- **Automated Backups**: Daily encrypted backups sent to your email
+- **Manual Testing**: Send backup immediately to verify configuration
+- **Encryption**: All backups are encrypted with a unique key
+- **Comprehensive Data**: Includes all forms, questions, responses, metrics, and settings
+- **JSON Format**: Easy to parse and restore if needed
+
+#### **Caching & Performance**
+Optimized for responsive data analysis:
+- **Metric Caching**: Expensive time-series calculations are cached
+- **Smart Invalidation**: Caches are cleared when underlying data changes
+- **Background Jobs**: Reports and backups run in background queues
+- **Efficient Queries**: Optimized database queries for large datasets
 
 ### Organization
 
 #### **Namespaces**
-Hierarchical organization system (e.g., `health.fitness`, `home.chores`) that helps categorize and filter all entities for better organization.
+Hierarchical organization system (e.g., `health.fitness`, `home.chores`) that helps categorize and filter all entities:
+- **Hierarchical Access**: When in a namespace, access all sub-namespaces
+- **Flexible Navigation**: Easy browsing through folder-like structure
+- **Cross-Reference**: Create reports that pull from multiple related namespaces
+- **Isolation**: Keep different areas of your life organized separately
 
 #### **Users**
-Multi-user support with data isolation - each user sees only their own forms, responses, and metrics.
+Multi-user support with complete data isolation - each user sees only their own forms, responses, and metrics.
 
 ## Key Features
 
 ### 🚀 **Flexible Data Entry**
 - **Structured Forms**: Complete surveys with multiple sections and auto-save drafts
 - **Quick Questions**: Answer individual questions directly when forms are overkill
+- **Adhoc Answers**: Answer questions without creating formal responses
 - **Cross-device Sync**: Continue forms on any device where you're logged in
 - **Flexible Question Types**: String, number, boolean, and range inputs
 - **Reusable Components**: Share sections across multiple forms
 
-### 📊 **Powerful Analytics** 
+### 📊 **Advanced Analytics** 
 - **Time-series Visualization**: See trends and patterns over time
 - **Flexible Aggregation**: Sum, average, count, and compare metrics
+- **Gap Filling**: Multiple strategies for handling missing data
 - **Pattern Recognition**: Wrap functionality reveals daily/weekly patterns
 - **Multi-resolution Analysis**: From 5-minute intervals to monthly trends
+- **Performance Caching**: Fast analytics even with large datasets
 
 ### 📈 **Interactive Dashboards**
 - **Custom Views**: Create personalized dashboards for different use cases
-- **Mixed Content**: Combine metrics, quick questions, and form links
+- **Mixed Content**: Combine metrics, quick questions, form links, and alerts
 - **Real-time Updates**: See your latest data immediately
+- **Nested Navigation**: Link dashboards together for complex workflows
 
 ### 🔔 **Smart Alerts**
 - **Threshold Monitoring**: Get notified when metrics cross important values
-- **Routine Reminders**: Stay consistent with your tracking habits
+- **Configurable Delays**: Require multiple data points before activation
+- **Visual Status**: Clear indicators with color coding
+- **Dashboard Integration**: Include alerts in your daily dashboard views
+
+### 📧 **Automated Reports**
+- **Scheduled Delivery**: Daily, weekly, or monthly automated reports
+- **Flexible Scheduling**: Choose specific times and days for delivery
+- **Rich Content**: HTML emails with charts, metrics, and alert status
+- **Manual Testing**: Send reports immediately to verify configuration
+- **Multi-content**: Combine multiple metrics and alerts in one report
+
+### 🔒 **Data Protection**
+- **Encrypted Backups**: Daily encrypted backups sent to your email
+- **Manual Backup**: Send backup immediately for testing
+- **Complete Data**: All forms, questions, responses, metrics, and settings
+- **Self-Hosted**: Your data never leaves your infrastructure
+- **Unique Encryption**: Each user has their own encryption key
+
+### ⚡ **Performance & Reliability**
+- **Background Processing**: Reports and backups run in background queues
+- **Smart Caching**: Expensive calculations are cached and invalidated intelligently
+- **Efficient Queries**: Optimized for large datasets and complex analytics
+- **Fault Tolerance**: Graceful handling of errors with user feedback
 
 ## Example Use Cases
 
@@ -127,10 +196,16 @@ Form: "Daily Health Check"
     └── Meditation (bool)
 ```
 
-**Metrics Examples:**
-- Average daily weight with `wrap: "none"` to see weight trends
+**Advanced Analytics:**
+- Average daily weight with `fill: "linear"` to smooth out gaps
 - Sleep patterns with `resolution: "day"`, `wrap: "weekly"` to see which days you sleep best
 - Exercise consistency with `function: "count"` to track workout frequency
+- Mood trends with `fill: "previous"` to maintain baseline between entries
+
+**Alerts & Reports:**
+- Alert when weight deviates more than 5 lbs from target
+- Weekly report showing all health metrics and trends
+- Daily backup of all health data
 
 ### Home Management
 ```
@@ -147,8 +222,14 @@ Form: "Household Tasks"
 
 **Dashboard Setup:**
 - Quick daily task checkboxes (answer questions directly)
-- Water pressure trend metric
+- Water pressure trend metric with `fill: "zero"` for missing days
 - Link to weekly deep-cleaning form
+- Alert when water pressure drops below 5 for 2 consecutive days
+
+**Automation:**
+- Weekly report summarizing all completed tasks
+- Monthly backup of household data
+- Alert for maintenance tasks not completed for 3+ days
 
 ## Getting Started
 
@@ -156,6 +237,7 @@ Form: "Household Tasks"
 - Ruby 3.x
 - Rails 8.x
 - SQLite (development) or PostgreSQL (production)
+- SMTP server for email delivery (reports and backups)
 
 ### Installation
 
@@ -176,17 +258,30 @@ Form: "Household Tasks"
    rails db:migrate
    ```
 
-4. **Start the server**
+4. **Configure email (optional)**
+   ```bash
+   # Set environment variables for SMTP
+   export SMTP_PASSWORD=your_smtp_password
+   ```
+
+5. **Start the server**
    ```bash
    rails server
    ```
 
-5. **Visit the application**
+6. **Visit the application**
    Open your browser to `http://localhost:3000`
 
 ### Production Deployment
 
 The application is deployed using [Kamal](https://kamal-deploy.org/) to a local network machine (`home.local`). This setup provides a self-hosted solution accessible within your local network while maintaining complete data privacy and control.
+
+**Key Production Features:**
+- Background job processing with SolidQueue
+- Automated daily backups
+- Scheduled report delivery
+- Performance caching
+- Email delivery via SMTP
 
 ### Quick Start Guide
 
@@ -204,13 +299,26 @@ The application is deployed using [Kamal](https://kamal-deploy.org/) to a local 
    - Navigate to Metrics → New Metric
    - Choose questions to analyze
    - Set time resolution and width
+   - Configure fill strategy for missing data
    - Experiment with wrap settings for pattern analysis
 
-4. **Build a dashboard**
+4. **Set up alerts**
+   - Navigate to Alerts → New Alert
+   - Choose a metric to monitor
+   - Set threshold and direction (above/below)
+   - Configure delay to avoid false alarms
+
+5. **Build a dashboard**
    - Navigate to Dashboards → New Dashboard
    - Add your metrics for visualization
    - Include quick-access questions for lightweight data entry
    - Add form links for structured data collection
+   - Include alerts for monitoring
+
+6. **Configure automation**
+   - Go to Settings to enable backups
+   - Create reports to get regular updates
+   - Use manual buttons to test configuration
 
 ## Technical Architecture
 
@@ -225,7 +333,10 @@ User
 ├── has_many :answers
 ├── has_many :metrics
 ├── has_many :dashboards
-└── has_many :form_drafts
+├── has_many :alerts
+├── has_many :reports
+├── has_many :form_drafts
+└── has_one :user_setting
 
 Form
 ├── belongs_to :user
@@ -238,11 +349,27 @@ Response
 ├── belongs_to :form
 └── has_many :answers
 
+Answer
+├── belongs_to :question
+├── belongs_to :response (optional - for adhoc answers)
+└── belongs_to :user (optional - for adhoc answers)
+
 Metric
 ├── belongs_to :user
 ├── has_many :questions (for 'answer' function)
 ├── has_many :child_metrics (for calculated functions)
-└── belongs_to :first_metric (for 'difference' function)
+├── belongs_to :first_metric (for 'difference' function)
+└── has_one :metric_series_cache
+
+Alert
+├── belongs_to :user
+├── belongs_to :metric
+└── has_one :alert_status_cache
+
+Report
+├── belongs_to :user
+├── has_many :alerts
+└── has_many :metrics
 ```
 
 ### Key Technologies
@@ -250,15 +377,27 @@ Metric
 - **Backend**: Ruby on Rails 8 with Turbo for seamless navigation
 - **Frontend**: ERB templates with vanilla JavaScript
 - **Database**: SQLite (development), PostgreSQL ready
+- **Jobs**: SolidQueue for background processing
 - **Visualization**: Chart.js for time-series plotting
 - **Styling**: CSS custom properties with clean, responsive design
+- **Email**: ActionMailer with SMTP delivery
+- **Deployment**: Kamal for containerized deployment
 
-### Data Storage
+### Performance Features
 
-- **Structured Data**: Traditional Rails models for forms, questions, responses
-- **Draft Data**: JSON fields for flexible form state storage
-- **Time Series**: Optimized queries for metric calculations across time ranges
-- **Namespacing**: Hierarchical organization without complex tree structures
+- **Caching**: Metric and alert calculations are cached with smart invalidation
+- **Background Jobs**: Reports and backups run asynchronously
+- **Efficient Queries**: Optimized for time-series data and large datasets
+- **Pagination**: Large lists are paginated for better performance
+- **Query Optimization**: Includes and joins minimize N+1 queries
+
+### Security & Privacy
+
+- **Data Isolation**: Complete separation between users
+- **Encrypted Backups**: All backups are encrypted with unique keys
+- **Self-Hosted**: No external data sharing
+- **Secure Configuration**: Production-ready defaults
+- **Input Validation**: Comprehensive validation on all user inputs
 
 ## Contributing
 
@@ -269,6 +408,10 @@ This is a personal project, but the codebase demonstrates:
 - Time-series data handling and visualization
 - Auto-save functionality with Turbo integration
 - Multi-dimensional analytics (functions, time, patterns)
+- Background job processing and scheduling
+- Comprehensive caching strategies
+- Email delivery and formatting
+- Performance optimization techniques
 
 ## License
 
