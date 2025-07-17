@@ -212,9 +212,13 @@ class Metric < ApplicationRecord
 
   def generate_question_series(question)
     # Generate series for a single question using this metric's parameters
-    filtered_answers = Answer.joins(:response, :question)
+    filtered_answers = Answer.joins(:question)
+                             .left_joins(:response)
                              .where(questions: { id: question.id })
-                             .where(responses: { user_id: user_id })
+                             .where(
+                               "(responses.user_id = ? OR (answers.response_id IS NULL AND answers.user_id = ?))",
+                               user_id, user_id
+                             )
                              .where(created_at: time_range)
                              .order(:created_at)
 
@@ -329,9 +333,13 @@ class Metric < ApplicationRecord
 
   def generate_answer_series
     # Get all answers to the referenced questions
-    filtered_answers = Answer.joins(:response, :question)
+    filtered_answers = Answer.joins(:question)
+                             .left_joins(:response)
                              .where(questions: { id: questions.pluck(:id) })
-                             .where(responses: { user_id: user_id })
+                             .where(
+                               "(responses.user_id = ? OR (answers.response_id IS NULL AND answers.user_id = ?))",
+                               user_id, user_id
+                             )
                              .where(created_at: time_range)
                              .order(:created_at)
 
@@ -596,9 +604,13 @@ class Metric < ApplicationRecord
     when "answer"
       # For answer metrics, get range from associated questions' answers
       if questions.any?
-        answers = Answer.joins(:response, :question)
+        answers = Answer.joins(:question)
+                        .left_joins(:response)
                         .where(questions: { id: questions.pluck(:id) })
-                        .where(responses: { user_id: user_id })
+                        .where(
+                          "(responses.user_id = ? OR (answers.response_id IS NULL AND answers.user_id = ?))",
+                          user_id, user_id
+                        )
 
         if answers.any?
           earliest = answers.minimum(:created_at)
