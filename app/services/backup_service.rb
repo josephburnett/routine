@@ -196,7 +196,6 @@ class BackupService
       {
         id: dashboard.id,
         name: dashboard.name,
-        layout: dashboard.layout,
         namespace: dashboard.namespace,
         created_at: dashboard.created_at.iso8601
       }

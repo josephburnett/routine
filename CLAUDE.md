@@ -1,0 +1,1 @@
+- Always run 'rake test' and 'rubocop' when you are done with your work so we won't get CI failures.

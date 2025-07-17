@@ -27,6 +27,25 @@ class SettingsController < ApplicationController
     end
   end
 
+  def send_backup_now
+    begin
+      # Check if backup is enabled
+      user_setting = current_user.user_setting
+      unless user_setting&.backup_enabled?
+        redirect_to settings_path, alert: "Backup is not enabled for your account"
+        return
+      end
+
+      # Send the backup
+      BackupMailer.daily_backup(current_user).deliver_now
+
+      redirect_to settings_path, notice: "Backup sent successfully! Check your email."
+    rescue => e
+      Rails.logger.error "Failed to send backup for user #{current_user.id}: #{e.message}"
+      redirect_to settings_path, alert: "Failed to send backup: #{e.message}"
+    end
+  end
+
   private
 
   def user_setting_params

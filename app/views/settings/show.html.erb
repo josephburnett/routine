@@ -65,6 +65,15 @@
             </button>
           </div>
         <% end %>
+
+        <% if @user_setting.backup_enabled? %>
+          <div class="field" style="margin-top: 1.5rem;">
+            <%= button_to "Send Backup Now", settings_send_backup_now_path, method: :post, class: "btn btn-secondary", style: "margin-right: 1rem;" %>
+            <small style="display: block; color: #666; margin-top: 0.25rem;">
+              Send a backup to your email address immediately for testing
+            </small>
+          </div>
+        <% end %>
       </div>
 
       <div class="field" style="margin-top: 2rem;">

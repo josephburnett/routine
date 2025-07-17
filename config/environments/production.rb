@@ -58,7 +58,7 @@ Rails.application.configure do
   config.action_mailer.raise_delivery_errors = true
 
   # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "example.com" }
+  config.action_mailer.default_url_options = { host: "home.local" }
 
   # SMTP configuration using environment variables
   config.action_mailer.smtp_settings = {
