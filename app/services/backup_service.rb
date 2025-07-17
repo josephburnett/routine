@@ -109,7 +109,7 @@ class BackupService
         id: question.id,
         name: question.name,
         question_type: question.question_type,
-        section_id: question.section_id,
+        section_ids: question.sections.pluck(:id),
         namespace: question.namespace,
         created_at: question.created_at.iso8601
       }
