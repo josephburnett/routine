@@ -17,7 +17,7 @@ class MetricsController < ApplicationController
     @metric = Metric.new
     current_ns = params[:namespace] || ""
     @questions = entities_in_allowed_namespaces(Question, current_ns)
-    @metrics = entities_in_allowed_namespaces(Metric, current_ns)
+    @metrics = entities_in_allowed_namespaces(Metric, current_ns).enabled
   end
 
   def create
@@ -28,14 +28,14 @@ class MetricsController < ApplicationController
     else
       current_ns = @metric.namespace || ""
       @questions = entities_in_allowed_namespaces(Question, current_ns)
-      @metrics = entities_in_allowed_namespaces(Metric, current_ns)
+      @metrics = entities_in_allowed_namespaces(Metric, current_ns).enabled
       render :new
     end
   end
 
   def edit
     @questions = entities_in_allowed_namespaces(Question, @metric.namespace)
-    @metrics = entities_in_allowed_namespaces(Metric, @metric.namespace).where.not(id: @metric.id)
+    @metrics = entities_in_allowed_namespaces(Metric, @metric.namespace).where.not(id: @metric.id).enabled
   end
 
   def update
@@ -43,7 +43,7 @@ class MetricsController < ApplicationController
       redirect_to @metric, notice: "Metric updated successfully"
     else
       @questions = entities_in_allowed_namespaces(Question, @metric.namespace)
-      @metrics = entities_in_allowed_namespaces(Metric, @metric.namespace).where.not(id: @metric.id)
+      @metrics = entities_in_allowed_namespaces(Metric, @metric.namespace).where.not(id: @metric.id).enabled
       render :edit
     end
   end
@@ -92,6 +92,6 @@ class MetricsController < ApplicationController
   end
 
   def metric_params
-    params.require(:metric).permit(:name, :function, :resolution, :width, :wrap, :scale, :first_metric_id, :namespace, :fill, question_ids: [], child_metric_ids: [])
+    params.require(:metric).permit(:name, :function, :resolution, :width, :wrap, :scale, :first_metric_id, :namespace, :fill, :disabled, question_ids: [], child_metric_ids: [])
   end
 end

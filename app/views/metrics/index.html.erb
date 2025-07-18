@@ -46,8 +46,11 @@
         <div class="index-grid">
           <% @items.each do |metric| %>
             <div class="index-card">
-              <h4><%= link_to metric.display_name, metric_path(metric) %></h4>
-              <p>Function: <%= metric.function.capitalize %></p>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <h4><%= link_to metric.display_name, metric_path(metric) %></h4>
+                <span style="display: inline-block; width: 16px; height: 16px; border-radius: 50%; background-color: <%= metric.disabled? ? '#999' : '#28a745' %>; margin-left: 8px;"></span>
+              </div>
+              <p>Function: <%= metric.function.capitalize %><%= " (disabled)" if metric.disabled? %></p>
               <p><%= metric.resolution %> • <%= metric.width %></p>
               <div class="index-card-actions">
                 <%= link_to "View", metric_path(metric) %>
