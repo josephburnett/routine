@@ -19,8 +19,14 @@
         <% progress_info = alert.activation_progress %>
         <% progress_percent = (progress_info[:progress] * 100).round %>
         <% 
+          exceeding_count = progress_info[:exceeding_count]
+          delay = alert.delay
+          
           if progress_percent >= 100
             bar_color = "#dc3545" # red
+          elsif delay > 1 && exceeding_count == (delay - 1)
+            # Special case: 1 day away from activation (but not for delay=1 alerts)
+            bar_color = "#ffc107" # yellow
           elsif progress_percent >= 75
             bar_color = "#ffc107" # yellow
           else
@@ -29,9 +35,14 @@
         %>
         
         <div style="display: flex; align-items: center; margin-bottom: 0.75rem; font-size: 0.9rem;">
-          <!-- Column 1: Threshold and Direction -->
+          <!-- Column 1: Latest Value -->
           <div style="width: 60px; text-align: center; font-weight: bold;">
-            <%= alert.direction == "above" ? "↑" : "↓" %><%= alert.threshold %>
+            <% 
+              # Get the latest value from the metric's series data
+              series_data = alert.metric.series
+              latest_value = series_data.any? ? series_data.last[1] : nil
+            %>
+            <%= latest_value ? latest_value.round(2) : "N/A" %>
           </div>
           
           <!-- Column 2: Progress Bar -->
@@ -41,9 +52,9 @@
             </div>
           </div>
           
-          <!-- Column 3: Delay -->
-          <div style="width: 30px; text-align: center; color: #666; font-size: 0.8rem;">
-            <%= alert.delay %>
+          <!-- Column 3: Threshold and Delay Combined -->
+          <div style="width: 80px; text-align: center; color: #666; font-size: 0.8rem;">
+            <%= alert.direction == "above" ? "↑" : "↓" %><%= alert.threshold %> / <%= alert.delay %>d
           </div>
           
           <!-- Column 4: Alert Name -->
