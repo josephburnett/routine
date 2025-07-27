@@ -48,7 +48,11 @@
           <!-- Column 2: Progress Bar -->
           <div style="flex: 1; margin: 0 0.75rem; position: relative;">
             <div style="height: 8px; background-color: #e9ecef; border-radius: 4px; overflow: hidden;">
-              <div style="height: 100%; background-color: <%= bar_color %>; width: <%= progress_percent %>%; transition: all 0.3s ease;"></div>
+              <% 
+                # For 0% progress, show full green bar. Otherwise show actual progress.
+                display_width = progress_percent == 0 ? 100 : progress_percent
+              %>
+              <div style="height: 100%; background-color: <%= bar_color %>; width: <%= display_width %>%; transition: all 0.3s ease;"></div>
             </div>
           </div>
           
