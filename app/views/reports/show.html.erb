@@ -1,105 +1,126 @@
-<div class="container">
-  <%= render 'shared/main_nav' %>
-
-  <div class="index-header">
-    <h1><%= @report.name || "Report ##{@report.id}" %></h1>
-    <div style="display: flex; gap: 0.5rem;">
-      <%= link_to "Edit", edit_report_path(@report), class: "btn btn-primary" %>
-    </div>
-  </div>
-
-  <%= link_to "← Back to Reports", reports_path(namespace: @report.namespace), class: "back-link" %>
-
-  <div class="card">
-    <h3>Report Configuration</h3>
-    <p><strong>Name:</strong> <%= @report.name || "Unnamed Report" %></p>
-    <p><strong>Schedule:</strong> <%= @report.interval_type.capitalize %> at <%= @report.time_of_day&.strftime("%H:%M") || "Not set" %></p>
-    <% if @report.interval_type == 'weekly' && @report.interval_config['days']&.any? %>
-      <p><strong>Days of Week:</strong> <%= @report.interval_config['days'].map(&:capitalize).join(', ') %></p>
-    <% elsif @report.interval_type == 'monthly' && @report.interval_config['day_of_month'] %>
-      <p><strong>Day of Month:</strong> <%= @report.interval_config['day_of_month'].ordinalize %></p>
-    <% end %>
-    <p><strong>Last Sent:</strong> <%= @report.last_sent_at&.strftime("%B %d, %Y at %I:%M %p") || "Never" %></p>
-    <% if @report.next_send_time %>
-      <p><strong>Next Send:</strong> <%= @report.next_send_time.strftime("%B %d, %Y at %I:%M %p") %></p>
-    <% end %>
-    <p><strong>Namespace:</strong> <%= @report.namespace.present? ? @report.namespace : "Root" %></p>
-    <p><strong>Created:</strong> <%= @report.created_at.strftime("%B %d, %Y at %I:%M %p") %></p>
-  </div>
-
-  <div class="card">
-    <h3>Report Status</h3>
-    <p><strong>Content Status:</strong>
-      <span class="status-badge <%= @report_status[:has_content] ? 'status-active' : 'status-inactive' %>">
-        <%= @report_status[:has_content] ? 'Has content to send' : 'No content to send' %>
-      </span>
+<div class="container" style="max-width: 600px; margin: 0 auto; padding: 1rem;">
+  <!-- Back Button Only -->
+  <%= link_to "← Back to Reports", reports_path(namespace: @report.namespace), class: "back-link", style: "margin-bottom: 1.5rem; display: inline-block;" %>
+  
+  <!-- Report Title -->
+  <div style="text-align: center; margin-bottom: 2rem;">
+    <h1 style="margin: 0; font-size: 1.5rem;"><%= @report.name || "Report ##{@report.id}" %></h1>
+    <p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.9rem;">
+      <%= @report.interval_type.capitalize %> at <%= @report.time_of_day&.strftime("%H:%M") || "Not set" %>
     </p>
-    <p><strong>Should Send Now:</strong> 
-      <span class="<%= @report_status[:should_send] ? 'status-active' : 'status-inactive' %>">
-        <%= @report_status[:should_send] ? 'Yes' : 'No' %>
-      </span>
-    </p>
-    <% if @report_status[:active_alerts_count] > 0 %>
-      <p><strong>Active Alerts:</strong> <%= @report_status[:active_alerts_count] %> of <%= @report.alerts.count %></p>
-    <% elsif @report.alerts.any? %>
-      <p><strong>Active Alerts:</strong> None (0 of <%= @report.alerts.count %>)</p>
-    <% end %>
   </div>
 
+  <!-- Alerts Section -->
   <% if @report.alerts.any? %>
-    <div class="card">
-      <h3>Included Alerts (<%= @report.alerts.count %>)</h3>
-      <p><em>These alerts will be included in the email when they are activated.</em></p>
-      <div class="items-grid">
-        <% @alert_summaries.each do |summary| %>
-          <% alert = summary[:alert] %>
-          <div class="item-card">
-            <div class="item-header">
-              <h4><%= link_to alert.display_title, alert_path(alert) %></h4>
-              <span class="status-badge <%= summary[:is_activated] ? 'status-active' : 'status-inactive' %>">
-                <%= summary[:is_activated] ? 'Active' : 'Inactive' %>
-                <% if summary[:error] %>
-                  <small style="color: orange;">(Error)</small>
-                <% end %>
-              </span>
-            </div>
-            <div class="item-details">
-              <p><strong>Threshold:</strong> <%= alert.direction.capitalize %> <%= alert.threshold %></p>
-              <% if summary[:latest_value] %>
-                <p><strong>Current Value:</strong> <%= summary[:latest_value].round(2) %></p>
-              <% else %>
-                <p><strong>Current Value:</strong> <%= summary[:error] ? "Error loading data" : "No data available" %></p>
-              <% end %>
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Alerts (<%= @report.alerts.count %>)</h3>
+      
+      <% @report.alerts.each do |alert| %>
+        <% progress_info = alert.activation_progress %>
+        <% progress_percent = (progress_info[:progress] * 100).round %>
+        <% 
+          if progress_percent >= 100
+            bar_color = "#dc3545" # red
+          elsif progress_percent >= 75
+            bar_color = "#ffc107" # yellow
+          else
+            bar_color = "#28a745" # green
+          end
+        %>
+        
+        <div style="display: flex; align-items: center; margin-bottom: 0.75rem; font-size: 0.9rem;">
+          <!-- Column 1: Threshold and Direction -->
+          <div style="width: 60px; text-align: center; font-weight: bold;">
+            <%= alert.direction == "above" ? "↑" : "↓" %><%= alert.threshold %>
+          </div>
+          
+          <!-- Column 2: Progress Bar -->
+          <div style="flex: 1; margin: 0 0.75rem; position: relative;">
+            <div style="height: 8px; background-color: #e9ecef; border-radius: 4px; overflow: hidden;">
+              <div style="height: 100%; background-color: <%= bar_color %>; width: <%= progress_percent %>%; transition: all 0.3s ease;"></div>
             </div>
           </div>
-        <% end %>
-      </div>
+          
+          <!-- Column 3: Delay -->
+          <div style="width: 30px; text-align: center; color: #666; font-size: 0.8rem;">
+            <%= alert.delay %>
+          </div>
+          
+          <!-- Column 4: Alert Name -->
+          <div style="flex: 2; margin-left: 0.75rem;">
+            <%= link_to alert.display_name, alert_path(alert, namespace: alert.namespace), style: "text-decoration: none; color: #{bar_color}; font-weight: bold;" %>
+          </div>
+        </div>
+      <% end %>
     </div>
   <% end %>
 
+  <!-- Metrics Section -->
   <% if @report.metrics.any? %>
-    <div class="card">
-      <h3>Included Metrics (<%= @report.metrics.count %>)</h3>
-      <p><em>These metrics will always be included in the email with recent data summaries.</em></p>
-      <div class="items-grid">
-        <% @metric_summaries.each do |summary| %>
-          <% metric = summary[:metric] %>
-          <div class="item-card">
-            <div class="item-header">
-              <h4><%= link_to metric.display_name, metric_path(metric) %></h4>
-              <% if summary[:error] %>
-                <small style="color: orange;">(Error loading data)</small>
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Metrics (<%= @report.metrics.count %>)</h3>
+      
+      <!-- 2-column grid layout -->
+      <div class="metrics-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <% @report.metrics.each do |metric| %>
+          <% series_data = metric.series %>
+          <div style="border: 1px solid #eee; border-radius: 6px; padding: 0.75rem;">
+            <!-- Metric name and latest value -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <h4 style="margin: 0; font-size: 0.9rem;">
+                <%= link_to metric.display_name, metric_path(metric, namespace: metric.namespace), style: "text-decoration: none; color: inherit;" %>
+              </h4>
+              <% if series_data.any? %>
+                <span style="font-weight: bold; font-size: 0.9rem;"><%= series_data.last[1]&.round(2) %></span>
+              <% else %>
+                <span style="color: #999; font-size: 0.9rem;">N/A</span>
               <% end %>
             </div>
-            <div class="item-details">
-              <p><strong>Function:</strong> <%= metric.function.capitalize %></p>
-              <p><strong>Resolution:</strong> <%= metric.resolution.capitalize %></p>
-              <p><strong>Width:</strong> <%= metric.width.humanize %></p>
-              <% if summary[:has_data] %>
-                <p><strong>Latest Value:</strong> <%= summary[:latest_value]&.round(2) || "N/A" %></p>
-                <p><strong>Data Points:</strong> <%= summary[:data_count] %></p>
+            
+            <!-- Compact line graph -->
+            <div style="margin-top: 0.5rem;">
+              <% if series_data.any? %>
+                <%
+                  # Prepare data for SVG
+                  values = series_data.map { |time, value| value || 0 }
+                  next if values.empty?
+                  
+                  # Graph dimensions (smaller for 2-column layout)
+                  width = 160
+                  height = 35
+                  padding = 3
+                  
+                  # Calculate scale
+                  min_val = values.min
+                  max_val = values.max
+                  val_range = max_val - min_val
+                  val_range = 1 if val_range == 0  # Avoid division by zero
+                  
+                  # Generate points for polyline
+                  points = values.each_with_index.map do |val, i|
+                    x = padding + (i.to_f / (values.length - 1)) * (width - 2 * padding)
+                    y = height - padding - ((val - min_val).to_f / val_range) * (height - 2 * padding)
+                    "#{x.round(1)},#{y.round(1)}"
+                  end.join(" ")
+                %>
+                <svg width="<%= width %>" height="<%= height %>" style="border: 1px solid #e0e0e0; background: #f9f9f9;">
+                  <polyline points="<%= points %>" 
+                           fill="none" 
+                           stroke="#007bff" 
+                           stroke-width="1.5" 
+                           stroke-linecap="round" 
+                           stroke-linejoin="round"/>
+                  <!-- Data points as small circles -->
+                  <% values.each_with_index do |val, i| %>
+                    <% 
+                      x = padding + (i.to_f / (values.length - 1)) * (width - 2 * padding)
+                      y = height - padding - ((val - min_val).to_f / val_range) * (height - 2 * padding)
+                    %>
+                    <circle cx="<%= x.round(1) %>" cy="<%= y.round(1) %>" r="1.5" fill="#007bff"/>
+                  <% end %>
+                </svg>
               <% else %>
-                <p><strong>Data:</strong> <%= summary[:error] ? "Error loading data" : "No data available" %></p>
+                <div style="font-size: 0.8rem; color: #999; font-style: italic;">No data available</div>
               <% end %>
             </div>
           </div>
@@ -108,51 +129,124 @@
     </div>
   <% end %>
 
+  <!-- No Content Message -->
   <% if @report.alerts.empty? && @report.metrics.empty? %>
-    <div class="card">
-      <h3>No Content Configured</h3>
-      <p>This report doesn't have any alerts or metrics configured. Add some content to make it useful:</p>
-      <div style="margin-top: 1rem;">
-        <%= link_to "Edit Report", edit_report_path(@report), class: "btn btn-primary" %>
-      </div>
+    <div class="card" style="text-align: center; padding: 2rem; margin-bottom: 1.5rem;">
+      <h3 style="color: #666; margin-bottom: 1rem;">No Content Configured</h3>
+      <p style="color: #999; margin-bottom: 1.5rem;">Add alerts or metrics to make this report useful.</p>
+      <%= link_to "Edit Report", edit_report_path(@report), class: "btn btn-primary" %>
     </div>
   <% end %>
 
-  <div class="card">
-    <h3>Email Preview</h3>
-    <p>When this report is sent, the email will contain:</p>
-    <ul>
-      <% if @report_status[:active_alerts_count] > 0 %>
-        <li><strong>Active Alerts section</strong> with <%= @report_status[:active_alerts_count] %> alert<%= 's' unless @report_status[:active_alerts_count] == 1 %></li>
-      <% elsif @report.alerts.any? %>
-        <li><em>No active alerts (alerts section will be hidden)</em></li>
-      <% end %>
-      <% if @report.metrics.any? %>
-        <li><strong>Metrics section</strong> with summaries of <%= @report.metrics.count %> metric<%= 's' unless @report.metrics.count == 1 %></li>
-      <% end %>
-      <% unless @report_status[:has_content] %>
-        <li><em>No content - email will not be sent</em></li>
-      <% end %>
-    </ul>
-    
-    <div style="margin-top: 1.5rem; text-align: center;">
-      <% if @report_status[:has_content] %>
-        <%= button_to "Send Report Now", send_now_report_path(@report), 
-            method: :post,
-            data: { confirm: "Are you sure you want to send this report now? It will be delivered to #{@report.user.email}." },
-            class: "btn btn-primary",
-            style: "background-color: var(--success); border-color: var(--success);" %>
-        <small style="display: block; margin-top: 0.5rem; color: #666;">
-          Test this report by sending it immediately to your email address.
-        </small>
-      <% else %>
-        <button disabled class="btn btn-primary" style="opacity: 0.5; cursor: not-allowed;">
-          Send Report Now
-        </button>
-        <small style="display: block; margin-top: 0.5rem; color: #999;">
-          Cannot send: report has no content (no active alerts or metrics with data).
-        </small>
-      <% end %>
-    </div>
+  <!-- Send Report Button -->
+  <div style="text-align: center; margin-bottom: 2rem;">
+    <% if @report_status[:has_content] %>
+      <%= button_to "Send Report Now", send_now_report_path(@report), 
+          method: :post,
+          data: { confirm: "Send this report to #{@report.user.email} now?" },
+          class: "btn btn-primary",
+          style: "background-color: #28a745; border-color: #28a745; padding: 0.75rem 2rem;" %>
+      <small style="display: block; margin-top: 0.5rem; color: #666;">
+        Test by sending immediately
+      </small>
+    <% else %>
+      <button disabled class="btn btn-primary" style="opacity: 0.5; cursor: not-allowed; padding: 0.75rem 2rem;">
+        Send Report Now
+      </button>
+      <small style="display: block; margin-top: 0.5rem; color: #999;">
+        No content to send
+      </small>
+    <% end %>
+  </div>
+
+  <!-- Quick Actions -->
+  <div style="text-align: center;">
+    <%= link_to "Edit Report", edit_report_path(@report), class: "btn btn-secondary", style: "margin-right: 0.5rem;" %>
+    <% if @report.last_sent_at %>
+      <small style="display: block; margin-top: 1rem; color: #999; font-size: 0.8rem;">
+        Last sent: <%= @report.last_sent_at.strftime("%b %d at %H:%M") %>
+      </small>
+    <% end %>
   </div>
 </div>
+
+<style>
+  .card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.25rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    margin: 0.25rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    transition: all 0.15s ease-in-out;
+  }
+  
+  .btn-primary {
+    color: #fff;
+    background-color: #007bff;
+    border-color: #007bff;
+  }
+  
+  .btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #004085;
+  }
+  
+  .btn-secondary {
+    color: #6c757d;
+    background-color: transparent;
+    border-color: #6c757d;
+  }
+  
+  .btn-secondary:hover {
+    color: #fff;
+    background-color: #6c757d;
+  }
+  
+  .back-link {
+    color: #007bff;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+  
+  .back-link:hover {
+    text-decoration: underline;
+  }
+  
+  /* Mobile-specific styles */
+  @media (max-width: 768px) {
+    .container {
+      padding: 0.75rem;
+    }
+    
+    .card {
+      padding: 1rem;
+    }
+    
+    h1 {
+      font-size: 1.3rem !important;
+    }
+    
+    h3 {
+      font-size: 1rem !important;
+    }
+    
+    /* Stack metrics in single column on mobile */
+    .metrics-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+</style>

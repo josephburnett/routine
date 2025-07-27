@@ -62,6 +62,52 @@ class Alert < ApplicationRecord
     [ is_activated, current_value ]
   end
 
+  def activation_progress
+    return { progress: 0.0, exceeding_count: 0, total_count: delay } unless metric&.series&.any?
+
+    series_data = metric.series
+    return { progress: 0.0, exceeding_count: 0, total_count: delay } if series_data.length < delay
+
+    # Get the last 'delay' number of data points
+    recent_values = series_data.last(delay).map(&:last)
+    return { progress: 0.0, exceeding_count: 0, total_count: delay } if recent_values.any?(&:nil?)
+
+    # Count how many recent values exceed the threshold
+    exceeding_count = case direction
+    when "above"
+      recent_values.count { |value| value > threshold }
+    when "below"
+      recent_values.count { |value| value < threshold }
+    else
+      0
+    end
+
+    # Find the most recent non-exceeding value (if any)
+    # Only count consecutive exceeding values from the end
+    consecutive_exceeding = 0
+    recent_values.reverse.each do |value|
+      exceeds = case direction
+      when "above"
+        value > threshold
+      when "below"
+        value < threshold
+      else
+        false
+      end
+
+      if exceeds
+        consecutive_exceeding += 1
+      else
+        break # Stop at first non-exceeding value
+      end
+    end
+
+    exceeding_count = consecutive_exceeding
+
+    progress = exceeding_count.to_f / delay.to_f
+    { progress: progress, exceeding_count: exceeding_count, total_count: delay }
+  end
+
   def status_color
     activated? ? "red" : "green"
   end
