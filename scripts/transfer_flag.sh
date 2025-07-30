@@ -50,8 +50,8 @@ rollback_transfer() {
     # Try to restart original source with its flag
     if [ "$original_source" = "$PI_HOST" ]; then
         log_info "Restarting Pi deployment..."
-        ssh -i "$SSH_KEY" "$PI_USER@$original_source" "cd ~/routine && kamal app start" || log_warning "Failed to restart Pi"
-        ssh -i "$SSH_KEY" "$PI_USER@$original_source" "cd ~/routine && kamal app exec --reuse 'bin/rails flag:force_create[\"Rollback from failed transfer\"]'" || log_warning "Failed to restore Pi flag"
+        pi_app_start || log_warning "Failed to restart Pi"
+        pi_rails_exec "flag:force_create[\"Rollback from failed transfer\"]" >/dev/null || log_warning "Failed to restore Pi flag"
     else
         log_info "Restarting laptop deployment..."
         kamal app start -d local || log_warning "Failed to restart laptop"
@@ -92,6 +92,47 @@ data overwrites when switching between Pi and laptop deployments.
 EOF
 }
 
+# Helper functions for Pi operations using Docker directly (Pi doesn't have Kamal)
+pi_get_container() {
+    ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker ps --format '{{.Names}}' | grep routine" 2>/dev/null | head -1
+}
+
+pi_app_stop() {
+    local container_name
+    container_name=$(pi_get_container)
+    if [ -n "$container_name" ]; then
+        ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker stop $container_name" 2>/dev/null || return 1
+    fi
+    return 0
+}
+
+pi_app_start() {
+    # For Pi, we assume deployment exists and just restart the container
+    local container_name
+    container_name=$(ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker ps -a --format '{{.Names}}' | grep routine" 2>/dev/null | head -1)
+    if [ -n "$container_name" ]; then
+        ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker start $container_name" 2>/dev/null || return 1
+    fi
+    return 0
+}
+
+pi_rails_exec() {
+    local rails_command="$1"
+    local container_name
+    container_name=$(pi_get_container)
+    if [ -n "$container_name" ]; then
+        ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker exec $container_name bin/rails $rails_command" 2>&1
+    else
+        echo "No container found"
+        return 1
+    fi
+}
+
+pi_deploy() {
+    # For Pi deployment, we need to use SSH to run kamal deploy from the Pi itself
+    ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "cd ~/routine && git pull && kamal deploy" 2>&1
+}
+
 # Check if host is reachable
 check_host_reachable() {
     local host=$1
@@ -128,32 +169,38 @@ check_host_reachable() {
 # Check flag status on a deployment
 check_flag_status() {
     local host=$1
-    log_info "Checking flag status on $host..."
     
     if [ "$host" = "localhost" ]; then
         # Check local deployment
         if kamal app logs -d local >/dev/null 2>&1; then
             # App is running, check flag via Rails task
             local flag_output
-            flag_output=$(kamal app exec -d local --reuse "bin/rails flag:status" 2>/dev/null | grep -E "(PRESENT|MISSING)" || echo "UNKNOWN")
-            if echo "$flag_output" | grep -q "PRESENT"; then
+            flag_output=$(kamal app exec -d local --reuse "bin/rails flag:status" 2>&1)
+            if echo "$flag_output" | grep -q "Flag is PRESENT"; then
                 echo "PRESENT"
-            else
+            elif echo "$flag_output" | grep -q "Flag is MISSING"; then
                 echo "MISSING"
+            else
+                echo "UNKNOWN"
             fi
         else
             echo "OFFLINE"
         fi
     elif [ "$host" = "$PI_HOST" ]; then
-        # Check Pi deployment via SSH
-        if ssh -i "$SSH_KEY" "$PI_USER@$host" "cd ~/routine && kamal app logs >/dev/null 2>&1" 2>/dev/null; then
+        # Check Pi deployment via SSH using Docker directly (Pi doesn't have Kamal)
+        local container_name
+        container_name=$(ssh -i "$SSH_KEY" "$PI_USER@$host" "docker ps --format '{{.Names}}' | grep routine" 2>/dev/null | head -1)
+        
+        if [ -n "$container_name" ]; then
             # App is running, check flag
             local flag_output
-            flag_output=$(ssh -i "$SSH_KEY" "$PI_USER@$host" "cd ~/routine && kamal app exec --reuse 'bin/rails flag:status'" 2>/dev/null | grep -E "(PRESENT|MISSING)" || echo "UNKNOWN")
-            if echo "$flag_output" | grep -q "PRESENT"; then
+            flag_output=$(pi_rails_exec "flag:status")
+            if echo "$flag_output" | grep -q "Flag is PRESENT"; then
                 echo "PRESENT"
-            else
+            elif echo "$flag_output" | grep -q "Flag is MISSING"; then
                 echo "MISSING"
+            else
+                echo "UNKNOWN"
             fi
         else
             echo "OFFLINE"
@@ -164,7 +211,7 @@ check_flag_status() {
 # Show status of both deployments
 show_status() {
     echo "🏁 Flag Transfer System Status"
-    echo "=" * 50
+    echo "=================================================="
     echo
     
     # Check Pi status
@@ -293,7 +340,7 @@ transfer_flag() {
     # Step 1: Shutdown source deployment
     log_info "Step 1: Shutting down $source_host deployment..."
     if [ "$source_host" = "$PI_HOST" ]; then
-        ssh -i "$SSH_KEY" "$PI_USER@$source_host" "cd ~/routine && kamal app stop" || log_warning "Source shutdown failed (may already be stopped)"
+        pi_app_stop || log_warning "Source shutdown failed (may already be stopped)"
     else
         kamal app stop -d local || log_warning "Source shutdown failed (may already be stopped)"
     fi
@@ -313,7 +360,7 @@ transfer_flag() {
     # Step 3: Deploy target if needed
     log_info "Step 3: Ensuring $target_host deployment is ready..."
     if [ "$target_host" = "$PI_HOST" ]; then
-        ssh -i "$SSH_KEY" "$PI_USER@$target_host" "cd ~/routine && kamal deploy" || log_warning "Deploy may have failed"
+        pi_deploy || log_warning "Deploy may have failed"
     else
         kamal deploy -d local || log_warning "Deploy may have failed"
     fi
@@ -334,7 +381,7 @@ transfer_flag() {
     # Step 5: Remove flag from source
     log_info "Step 5: Removing flag from $source_host..."
     if [ "$source_host" = "$PI_HOST" ]; then
-        ssh -i "$SSH_KEY" "$PI_USER@$source_host" "cd ~/routine && kamal app exec --reuse 'bin/rails flag:remove'" || log_warning "Flag removal from source failed"
+        pi_rails_exec "flag:remove" >/dev/null || log_warning "Flag removal from source failed"
     else
         kamal app exec -d local --reuse "bin/rails flag:remove" || log_warning "Flag removal from source failed"
     fi
@@ -343,7 +390,7 @@ transfer_flag() {
     # Step 6: Create flag on target
     log_info "Step 6: Creating flag on $target_host..."
     if [ "$target_host" = "$PI_HOST" ]; then
-        ssh -i "$SSH_KEY" "$PI_USER@$target_host" "cd ~/routine && kamal app exec --reuse 'bin/rails flag:create[$source_host]'"
+        pi_rails_exec "flag:create[$source_host]" >/dev/null
     else
         kamal app exec -d local --reuse "bin/rails flag:create[$source_host]"
     fi
