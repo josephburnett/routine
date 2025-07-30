@@ -1,0 +1,59 @@
+# Local deployment configuration for laptop/travel use
+# Deploy with: kamal deploy -d local
+
+# Name of your application. Used to uniquely configure containers.
+service: routine
+
+deploy_timeout: 300
+
+# Name of the container image.
+image: josephburnett/routine
+
+# Deploy to localhost
+servers:
+  web:
+    - localhost
+
+# Proxy configuration for local deployment
+proxy:
+  app_port: 3000
+
+# Credentials for your image host.
+registry:
+  username: josephburnett
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# Inject ENV variables into containers (secrets come from .kamal/secrets).
+env:
+  secret:
+    - RAILS_MASTER_KEY
+    - SMTP_PASSWORD
+  clear:
+    # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
+    SOLID_QUEUE_IN_PUMA: true
+    
+    # Set the host for local deployment
+    APPLICATION_HOST: localhost
+
+# Aliases for local deployment
+aliases:
+  console: app exec --interactive --reuse "bin/rails console"
+  shell: app exec --interactive --reuse "bash"
+  logs: app logs -f
+  dbc: app exec --interactive --reuse "bin/rails dbconsole"
+
+# Use a persistent storage volume for sqlite database files and local Active Storage files.
+volumes:
+  - "survey_storage_local:/rails/storage"
+
+# Bridge fingerprinted assets, like JS and CSS, between versions
+asset_path: /rails/public/assets
+
+# Configure the image builder for local (x86_64) architecture
+builder:
+  arch: amd64
+
+# SSH configuration for local deployment (use default user and keys)
+ssh:
+  user: ${USER}

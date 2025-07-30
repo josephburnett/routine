@@ -41,6 +41,6 @@ Stay consistent with your routines!
 Your Routine Tracker
 
 ---
-This email was sent from your self-hosted Routine Tracker at home.local
+This email was sent from your self-hosted Routine Tracker at <%= ENV.fetch('APPLICATION_HOST', 'home.local') %>
 Open Routine Tracker: <%= root_url %>
 Manage Reports: <%= reports_url %>

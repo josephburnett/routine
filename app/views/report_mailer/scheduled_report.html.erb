@@ -66,7 +66,7 @@
     </p>
     <hr style="margin: 15px 0;">
     <small>
-      This email was sent from your self-hosted Routine Tracker at home.local<br>
+      This email was sent from your self-hosted Routine Tracker at <%= ENV.fetch('APPLICATION_HOST', 'home.local') %><br>
       <a href="<%= root_url %>">Open Routine Tracker</a> | 
       <a href="<%= reports_url %>">Manage Reports</a>
     </small>
