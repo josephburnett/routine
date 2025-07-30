@@ -17,6 +17,32 @@ PI_HOST="home.local"
 PI_USER="joe"
 SSH_KEY="~/.ssh/home.local"
 
+# Helper functions for Pi operations using Docker directly (Pi doesn't have Kamal)
+pi_get_container() {
+    ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker ps --format '{{.Names}}' | grep routine" 2>/dev/null | head -1
+}
+
+pi_start_container() {
+    local container_name
+    container_name=$(ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker ps -a --format '{{.Names}}' | grep routine" 2>/dev/null | head -1)
+    if [ -n "$container_name" ]; then
+        ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker start $container_name" 2>/dev/null || return 1
+    fi
+    return 0
+}
+
+pi_rails_exec() {
+    local rails_command="$1"
+    local container_name
+    container_name=$(pi_get_container)
+    if [ -n "$container_name" ]; then
+        ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker exec $container_name bin/rails $rails_command" 2>&1
+    else
+        echo "No container found"
+        return 1
+    fi
+}
+
 if [ -z "$HOST" ] || [ -z "$OUTPUT_FILE" ]; then
     echo "Usage: $0 [home.local|localhost] [output_file]"
     exit 1
@@ -25,15 +51,15 @@ fi
 echo "📦 Exporting database from $HOST..."
 
 if [ "$HOST" = "$PI_HOST" ]; then
-    # Export from Pi
+    # Export from Pi using Docker directly
     echo "🔗 Connecting to Pi via SSH..."
     
     # Ensure Pi app is running for export
-    ssh -i "$SSH_KEY" "$PI_USER@$HOST" "cd ~/routine && kamal app start" >/dev/null 2>&1 || true
+    pi_start_container >/dev/null 2>&1 || true
     sleep 5
     
     # Run export
-    ssh -i "$SSH_KEY" "$PI_USER@$HOST" "cd ~/routine && kamal app exec --reuse 'bin/rails db:sync:export'" >/dev/null
+    pi_rails_exec "db:sync:export" >/dev/null
     
     # Find and download the export file
     REMOTE_EXPORT=$(ssh -i "$SSH_KEY" "$PI_USER@$HOST" "ls -t ~/routine/tmp/db_sync/db_export_*.json 2>/dev/null | head -1" || echo "")
