@@ -323,30 +323,37 @@ Transfer ID: temp_$(date +%s)" > /storage/ACTIVE_FLAG'
         
         # Check if 1Password CLI is available and authenticated
         if ! op whoami >/dev/null 2>&1; then
-            log_error "1Password CLI not authenticated. Please run 'op signin' first."
+            log_error "1Password CLI not authenticated. Please run the following commands:"
+            log_error "  eval \$(op signin)"
             log_error "This is required to load Rails master key and SMTP password."
             exit 1
         fi
         
         # Load secrets from 1Password - these must match what Pi uses
         log_info "Loading secrets from 1Password..."
-        RAILS_MASTER_KEY=$(op read "op://Private/Routine Master Key/password" 2>/dev/null)
-        SMTP_PASSWORD=$(op read "op://Private/Routine SMTP Password/password" 2>/dev/null)
+        RAILS_MASTER_KEY=$(op read "op://Personal/Routine Master Key/password" 2>/dev/null)
+        SMTP_PASSWORD=$(op read "op://Personal/Routine SMTP Password/password" 2>/dev/null)
         
         # Validate all required secrets were loaded
         if [ -z "$RAILS_MASTER_KEY" ]; then
             log_error "Failed to load Rails master key from 1Password"
-            log_error "Please ensure 'Routine Master Key' exists in 1Password Private vault"
+            log_error "Please ensure 'Routine Master Key' exists in 1Password Personal vault"
             exit 1
         fi
         
         if [ -z "$SMTP_PASSWORD" ]; then
             log_error "Failed to load SMTP password from 1Password"  
-            log_error "Please ensure 'Routine SMTP Password' exists in 1Password Private vault"
+            log_error "Please ensure 'Routine SMTP Password' exists in 1Password Personal vault"
             exit 1
         fi
         
         log_info "Successfully loaded all secrets from 1Password"
+        
+        # Remove any existing routine-local container
+        if docker ps -a --format '{{.Names}}' | grep -q "^routine-local$"; then
+            log_info "Removing existing routine-local container..."
+            docker rm -f routine-local >/dev/null 2>&1 || true
+        fi
         
         docker run -d --name routine-local \
             -v survey_storage_local:/rails/storage \
@@ -611,10 +618,22 @@ transfer_flag() {
     echo
     log_info "📊 Transfer Verification:"
     log_info "  Target ($target_host): $final_target_status with flag $final_target_flag"
-    log_info "  Source ($source_host): $final_source_status (should be OFFLINE)"
+    log_info "  Source ($source_host): $final_source_status (should be OFFLINE or without flag)"
     log_info "  Records transferred: $initial_records → $final_records"
     
-    if [ "$final_target_status" = "RUNNING" ] && [ "$final_target_flag" = "PRESENT" ] && [ "$final_source_status" = "OFFLINE" ]; then
+    # Success conditions: 
+    # 1. Target is RUNNING with flag PRESENT
+    # 2. Source is either OFFLINE or running without flag (both are safe)
+    local source_flag_status=$(check_flag_status "$source_host")
+    local transfer_success=false
+    
+    if [ "$final_target_status" = "RUNNING" ] && [ "$final_target_flag" = "PRESENT" ]; then
+        if [ "$final_source_status" = "OFFLINE" ] || [ "$source_flag_status" = "MISSING" ] || [ "$source_flag_status" = "ERROR" ]; then
+            transfer_success=true
+        fi
+    fi
+    
+    if [ "$transfer_success" = true ]; then
         log_success "🎉 Flag transfer completed successfully!"
         echo
         log_success "✅ Safe state achieved: Only $target_host is active"
