@@ -19,7 +19,8 @@ namespace :db do
       # Get all models that inherit from ApplicationRecord
       models = [
         User, Question, Form, Section, Response, Answer,
-        Metric, Alert, Report, Dashboard, DashboardItem,
+        Metric, Alert, Report, Dashboard, DashboardMetric,
+        DashboardAlert, DashboardForm, DashboardQuestion, DashboardDashboard,
         AlertStatusCache, ReportAlert, ReportMetric,
         MetricQuestion, SectionQuestion
       ]
@@ -92,7 +93,8 @@ namespace :db do
       puts "🗑️  Clearing existing data..."
       [
         AlertStatusCache, ReportAlert, ReportMetric, MetricQuestion, SectionQuestion,
-        DashboardItem, Answer, Response, Alert, Report, Dashboard, Metric,
+        DashboardMetric, DashboardAlert, DashboardForm, DashboardQuestion, DashboardDashboard,
+        Answer, Response, Alert, Report, Dashboard, Metric,
         Section, Question, Form, User
       ].each do |model|
         count = model.count
@@ -103,7 +105,8 @@ namespace :db do
       # Import data in correct order (respecting foreign keys)
       import_order = [
         "users", "forms", "sections", "questions", "responses", "answers",
-        "metrics", "alerts", "reports", "dashboards", "dashboard_items",
+        "metrics", "alerts", "reports", "dashboards", "dashboard_metrics",
+        "dashboard_alerts", "dashboard_forms", "dashboard_questions", "dashboard_dashboards",
         "alert_status_caches", "report_alerts", "report_metrics",
         "metric_questions", "section_questions"
       ]
@@ -159,7 +162,8 @@ namespace :db do
 
       models = [
         User, Question, Form, Section, Response, Answer,
-        Metric, Alert, Report, Dashboard, DashboardItem,
+        Metric, Alert, Report, Dashboard, DashboardMetric,
+        DashboardAlert, DashboardForm, DashboardQuestion, DashboardDashboard,
         AlertStatusCache, ReportAlert, ReportMetric,
         MetricQuestion, SectionQuestion
       ]
