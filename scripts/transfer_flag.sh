@@ -151,7 +151,7 @@ check_host_reachable() {
         return 0
     elif [ "$host" = "$PI_HOST" ]; then
         # For Pi, check SSH connectivity
-        if ! ping -c 1 -W 2 "$host" >/dev/null 2>&1; then
+        if ! ping -c 1 -W 5 "$host" >/dev/null 2>&1; then
             log_error "Cannot ping $host"
             return 1
         fi
