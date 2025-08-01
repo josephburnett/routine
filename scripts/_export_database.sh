@@ -61,8 +61,21 @@ if [ "$HOST" = "$PI_HOST" ]; then
     # Run export
     pi_rails_exec "db:sync:export" >/dev/null
     
-    # Find and download the export file
-    REMOTE_EXPORT=$(ssh -i "$SSH_KEY" "$PI_USER@$HOST" "ls -t ~/routine/tmp/db_sync/db_export_*.json 2>/dev/null | head -1" || echo "")
+    # Find the export file inside the container
+    CONTAINER_EXPORT=$(ssh -i "$SSH_KEY" "$PI_USER@$HOST" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) ls -t /rails/tmp/db_sync/db_export_*.json 2>/dev/null | head -1" || echo "")
+    
+    if [ -z "$CONTAINER_EXPORT" ]; then
+        echo "❌ No export file found in Pi container"
+        exit 1
+    fi
+    
+    # Copy export file from container to host
+    CONTAINER_NAME=$(ssh -i "$SSH_KEY" "$PI_USER@$HOST" "docker ps --format '{{.Names}}' | grep routine | head -1")
+    EXPORT_FILENAME=$(basename "$CONTAINER_EXPORT")
+    ssh -i "$SSH_KEY" "$PI_USER@$HOST" "mkdir -p ~/routine/tmp/db_sync && docker cp $CONTAINER_NAME:$CONTAINER_EXPORT ~/routine/tmp/db_sync/$EXPORT_FILENAME"
+    
+    # Find and download the export file from host
+    REMOTE_EXPORT="~/routine/tmp/db_sync/$EXPORT_FILENAME"
     
     if [ -z "$REMOTE_EXPORT" ]; then
         echo "❌ No export file found on Pi"
