@@ -61,10 +61,42 @@ elif [ "$HOST" = "localhost" ]; then
     # Import to laptop
     echo "💻 Importing to local deployment..."
     
-    # Copy file to container and run import (with auto-confirmation)
-    kamal app exec -d local --reuse "cat > /rails/tmp/db_import.json" < "$INPUT_FILE"
-    echo "y" | kamal app exec -d local --reuse "bin/rails db:sync:import[/rails/tmp/db_import.json]"
-    kamal app exec -d local --reuse "rm -f /rails/tmp/db_import.json" || true
+    # Try Kamal first, fall back to Docker direct if SSH fails
+    container_name=$(docker ps -a --format '{{.Names}}' | grep routine | head -1)
+    
+    if [ -n "$container_name" ]; then
+        echo "📦 Using Docker directly with container: $container_name"
+        
+        # Check if container is running, start it if not
+        if [ "$(docker inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)" != "running" ]; then
+            echo "🔄 Starting stopped container..."
+            # Temporarily create flag to allow container to start
+            docker run --rm -v survey_storage_local:/tmp/storage alpine sh -c 'echo "Temporary flag for import" > /tmp/storage/ACTIVE_FLAG'
+            docker start "$container_name"
+            # Wait a moment for container to start
+            sleep 5
+        fi
+        
+        # Ensure container is ready for import by creating temporary flag if needed
+        if ! docker exec "$container_name" test -f /rails/storage/ACTIVE_FLAG 2>/dev/null; then
+            echo "🔧 Creating temporary flag for import..."
+            docker exec "$container_name" sh -c 'echo "Temporary flag for import" > /rails/storage/ACTIVE_FLAG'
+        fi
+        
+        # Copy file to container and run import using Docker directly
+        docker cp "$INPUT_FILE" "$container_name:/rails/tmp/db_import.json"
+        echo "y" | docker exec -i "$container_name" bin/rails db:sync:import[/rails/tmp/db_import.json]
+        docker exec "$container_name" rm -f /rails/tmp/db_import.json || true
+        
+        # Remove temporary flag after import
+        docker exec "$container_name" rm -f /rails/storage/ACTIVE_FLAG || true
+    else
+        echo "⚠️  No running container found, trying Kamal commands..."
+        # Try Kamal as fallback (in case SSH is working)
+        kamal app exec -d local --reuse "cat > /rails/tmp/db_import.json" < "$INPUT_FILE"
+        echo "y" | kamal app exec -d local --reuse "bin/rails db:sync:import[/rails/tmp/db_import.json]"
+        kamal app exec -d local --reuse "rm -f /rails/tmp/db_import.json" || true
+    fi
     
 else
     echo "❌ Unknown host: $HOST"

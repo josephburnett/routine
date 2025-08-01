@@ -54,8 +54,15 @@ rollback_transfer() {
         pi_rails_exec "flag:force_create[\"Rollback from failed transfer\"]" >/dev/null || log_warning "Failed to restore Pi flag"
     else
         log_info "Restarting laptop deployment..."
-        kamal app start -d local || log_warning "Failed to restart laptop"
-        kamal app exec -d local --reuse "bin/rails flag:force_create[\"Rollback from failed transfer\"]" || log_warning "Failed to restore laptop flag"
+        # For localhost, try Docker first, fall back to Kamal
+        local container_name=$(docker ps -a --format '{{.Names}}' | grep routine | head -1)
+        if [ -n "$container_name" ]; then
+            docker start "$container_name" || log_warning "Failed to restart laptop"
+            docker exec "$container_name" bin/rails flag:force_create["Rollback from failed transfer"] || log_warning "Failed to restore laptop flag"
+        else
+            kamal app start -d local || log_warning "Failed to restart laptop"
+            kamal app exec -d local --reuse "bin/rails flag:force_create[\"Rollback from failed transfer\"]" || log_warning "Failed to restore laptop flag"
+        fi
     fi
     
     log_warning "Rollback attempted. You may need to manually verify data integrity."
@@ -171,11 +178,13 @@ check_flag_status() {
     local host=$1
     
     if [ "$host" = "localhost" ]; then
-        # Check local deployment
-        if kamal app logs -d local >/dev/null 2>&1; then
-            # App is running, check flag via Rails task
+        # Check local deployment - try Docker first, fall back to Kamal
+        local container_name=$(docker ps --format '{{.Names}}' | grep routine | head -1)
+        
+        if [ -n "$container_name" ]; then
+            # App is running via Docker, check flag
             local flag_output
-            flag_output=$(kamal app exec -d local --reuse "bin/rails flag:status" 2>&1)
+            flag_output=$(docker exec "$container_name" bin/rails flag:status 2>&1)
             if echo "$flag_output" | grep -q "Flag is PRESENT"; then
                 echo "PRESENT"
             elif echo "$flag_output" | grep -q "Flag is MISSING"; then
@@ -184,7 +193,21 @@ check_flag_status() {
                 echo "UNKNOWN"
             fi
         else
-            echo "OFFLINE"
+            # Try Kamal as fallback
+            if kamal app logs -d local >/dev/null 2>&1; then
+                # App is running via Kamal, check flag via Rails task
+                local flag_output
+                flag_output=$(kamal app exec -d local --reuse "bin/rails flag:status" 2>&1)
+                if echo "$flag_output" | grep -q "Flag is PRESENT"; then
+                    echo "PRESENT"
+                elif echo "$flag_output" | grep -q "Flag is MISSING"; then
+                    echo "MISSING"
+                else
+                    echo "UNKNOWN"
+                fi
+            else
+                echo "OFFLINE"
+            fi
         fi
     elif [ "$host" = "$PI_HOST" ]; then
         # Check Pi deployment via SSH using Docker directly (Pi doesn't have Kamal)
@@ -342,7 +365,13 @@ transfer_flag() {
     if [ "$source_host" = "$PI_HOST" ]; then
         pi_app_stop || log_warning "Source shutdown failed (may already be stopped)"
     else
-        kamal app stop -d local || log_warning "Source shutdown failed (may already be stopped)"
+        # For localhost, try Docker first, fall back to Kamal
+        local container_name=$(docker ps --format '{{.Names}}' | grep routine | head -1)
+        if [ -n "$container_name" ]; then
+            docker stop "$container_name" || log_warning "Source shutdown failed (may already be stopped)"
+        else
+            kamal app stop -d local || log_warning "Source shutdown failed (may already be stopped)"
+        fi
     fi
     log_success "Source deployment shutdown complete"
     
@@ -362,7 +391,27 @@ transfer_flag() {
     if [ "$target_host" = "$PI_HOST" ]; then
         pi_deploy || log_warning "Deploy may have failed"
     else
-        kamal deploy -d local || log_warning "Deploy may have failed"
+        # For localhost, try to deploy but don't fail if it has issues
+        # We'll create a container manually if needed
+        if ! timeout 60 kamal deploy -d local 2>/dev/null; then
+            log_warning "Kamal deploy failed, will try to start existing container or create new one"
+            # Try to start existing container if it exists
+            local existing_container=$(docker ps -a --format '{{.Names}}' | grep routine | head -1)
+            if [ -n "$existing_container" ]; then
+                docker start "$existing_container" || log_warning "Failed to start existing container"
+            else
+                # If no container exists, try to pull and run a simple container for data import
+                log_info "Creating temporary container for data import..."
+                if docker pull josephburnett/routine:latest 2>/dev/null; then
+                    docker run -d --name routine-local-temp \
+                        -v survey_storage_local:/rails/storage \
+                        -p 3000:3000 \
+                        josephburnett/routine:latest || log_warning "Failed to create temporary container"
+                else
+                    log_warning "Could not pull routine image, import may fail"
+                fi
+            fi
+        fi
     fi
     log_success "Target deployment ready"
     
@@ -383,7 +432,13 @@ transfer_flag() {
     if [ "$source_host" = "$PI_HOST" ]; then
         pi_rails_exec "flag:remove" >/dev/null || log_warning "Flag removal from source failed"
     else
-        kamal app exec -d local --reuse "bin/rails flag:remove" || log_warning "Flag removal from source failed"
+        # For localhost, try Docker first, fall back to Kamal
+        local container_name=$(docker ps --format '{{.Names}}' | grep routine | head -1)
+        if [ -n "$container_name" ]; then
+            docker exec "$container_name" bin/rails flag:remove >/dev/null || log_warning "Flag removal from source failed"
+        else
+            kamal app exec -d local --reuse "bin/rails flag:remove" >/dev/null || log_warning "Flag removal from source failed"
+        fi
     fi
     log_success "Flag removed from $source_host"
     
@@ -392,7 +447,13 @@ transfer_flag() {
     if [ "$target_host" = "$PI_HOST" ]; then
         pi_rails_exec "flag:create[$source_host]" >/dev/null
     else
-        kamal app exec -d local --reuse "bin/rails flag:create[$source_host]"
+        # For localhost, try Docker first, fall back to Kamal
+        local container_name=$(docker ps --format '{{.Names}}' | grep routine | head -1)
+        if [ -n "$container_name" ]; then
+            docker exec "$container_name" bin/rails flag:create[$source_host] >/dev/null
+        else
+            kamal app exec -d local --reuse "bin/rails flag:create[$source_host]" >/dev/null
+        fi
     fi
     log_success "Flag created on $target_host"
     

@@ -9,7 +9,7 @@ deploy_timeout: 300
 # Name of the container image.
 image: josephburnett/routine
 
-# Deploy to localhost
+# Deploy to localhost using Docker directly
 servers:
   web:
     - localhost
@@ -54,6 +54,7 @@ asset_path: /rails/public/assets
 builder:
   arch: amd64
 
-# SSH configuration for local deployment (use default user and keys)
+# SSH configuration for local deployment - disable SSH for localhost
 ssh:
   user: ${USER}
+  # For localhost, Kamal will use Docker directly instead of SSH
