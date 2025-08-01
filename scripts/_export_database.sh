@@ -1,12 +1,12 @@
 #!/bin/bash
 
 #
-# Internal Helper: Export Database
+# Database Export v2 - SQLite Native Tools
 #
-# This script exports the database from a specific deployment.
-# Used internally by transfer_flag.sh - not meant to be called directly.
+# This script exports the complete database using SQLite's native .dump command
+# which captures ALL data automatically - no hardcoded model lists required.
 #
-# Usage: ./_export_database.sh [home.local|localhost] [output_file]
+# Usage: ./_export_database_v2.sh [home.local|localhost] [output_file]
 #
 
 set -e
@@ -17,109 +17,117 @@ PI_HOST="home.local"
 PI_USER="joe"
 SSH_KEY="~/.ssh/home.local"
 
-# Helper functions for Pi operations using Docker directly (Pi doesn't have Kamal)
-pi_get_container() {
-    ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker ps --format '{{.Names}}' | grep routine" 2>/dev/null | head -1
-}
-
-pi_start_container() {
-    local container_name
-    container_name=$(ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker ps -a --format '{{.Names}}' | grep routine" 2>/dev/null | head -1)
-    if [ -n "$container_name" ]; then
-        ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker start $container_name" 2>/dev/null || return 1
-    fi
-    return 0
-}
-
-pi_rails_exec() {
-    local rails_command="$1"
-    local container_name
-    container_name=$(pi_get_container)
-    if [ -n "$container_name" ]; then
-        ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker exec $container_name bin/rails $rails_command" 2>&1
-    else
-        echo "No container found"
-        return 1
-    fi
-}
-
 if [ -z "$HOST" ] || [ -z "$OUTPUT_FILE" ]; then
     echo "Usage: $0 [home.local|localhost] [output_file]"
     exit 1
 fi
 
-echo "📦 Exporting database from $HOST..."
+echo "📦 Exporting database from $HOST using SQLite native tools..."
+echo "📁 Output file: $OUTPUT_FILE"
 
 if [ "$HOST" = "$PI_HOST" ]; then
-    # Export from Pi using Docker directly
+    # Export from Pi using SSH
     echo "🔗 Connecting to Pi via SSH..."
     
-    # Ensure Pi app is running for export
-    pi_start_container >/dev/null 2>&1 || true
-    sleep 5
+    # Create remote export and copy it locally
+    remote_export="/tmp/db_export_$(date +%Y%m%d_%H%M%S).sql"
     
-    # Run export
-    pi_rails_exec "db:sync:export" >/dev/null
+    # Check if container is running
+    container_name=$(ssh -i "$SSH_KEY" "$PI_USER@$HOST" "docker ps --format '{{.Names}}' | grep routine | head -1" 2>/dev/null)
     
-    # Find the export file inside the container
-    CONTAINER_NAME=$(ssh -i "$SSH_KEY" "$PI_USER@$HOST" "docker ps --format '{{.Names}}' | grep routine | head -1")
-    CONTAINER_EXPORT=$(ssh -i "$SSH_KEY" "$PI_USER@$HOST" "docker exec $CONTAINER_NAME sh -c 'ls -t /rails/tmp/db_sync/db_export_*.json 2>/dev/null | head -1'" || echo "")
-    
-    if [ -z "$CONTAINER_EXPORT" ]; then
-        echo "❌ No export file found in Pi container"
-        exit 1
+    if [ -n "$container_name" ]; then
+        # Container is running - export via container
+        echo "📦 Exporting via running container: $container_name"
+        ssh -i "$SSH_KEY" "$PI_USER@$HOST" "docker exec $container_name sqlite3 /rails/storage/production.sqlite3 '.dump'" > "$OUTPUT_FILE"
+    else
+        # Container is stopped - use minimal SQLite container for direct export
+        echo "📦 Container stopped, using minimal SQLite container for export..."
+        
+        # Export directly from volume using lightweight SQLite container
+        # Redirect apk output to /dev/null to avoid contaminating SQL dump
+        ssh -i "$SSH_KEY" "$PI_USER@$HOST" "docker run --rm -v survey_storage:/data alpine sh -c 'apk add --no-cache sqlite >/dev/null 2>&1 && sqlite3 /data/production.sqlite3 .dump'" > "$OUTPUT_FILE"
+        
+        if [ $? -ne 0 ]; then
+            echo "❌ Failed to export database using SQLite container"
+            exit 1
+        fi
     fi
     
-    # Copy export file from container to host  
-    EXPORT_FILENAME=$(basename "$CONTAINER_EXPORT")
-    ssh -i "$SSH_KEY" "$PI_USER@$HOST" "mkdir -p ~/routine/tmp/db_sync && docker cp $CONTAINER_NAME:$CONTAINER_EXPORT ~/routine/tmp/db_sync/$EXPORT_FILENAME"
-    
-    # Find and download the export file from host
-    REMOTE_EXPORT="~/routine/tmp/db_sync/$EXPORT_FILENAME"
-    
-    if [ -z "$REMOTE_EXPORT" ]; then
-        echo "❌ No export file found on Pi"
+    if [ $? -eq 0 ] && [ -s "$OUTPUT_FILE" ]; then
+        file_size=$(du -h "$OUTPUT_FILE" | cut -f1)
+        echo "✅ Database exported successfully"
+        echo "💾 Size: $file_size"
+        
+        # Verify the export contains essential tables
+        if grep -q "CREATE TABLE.*users" "$OUTPUT_FILE" && grep -q "CREATE TABLE.*reports" "$OUTPUT_FILE"; then
+            echo "✅ Export verification: Essential tables found"
+        else
+            echo "⚠️  Export verification: Some expected tables missing"
+        fi
+    else
+        echo "❌ Database export failed"
         exit 1
     fi
-    
-    scp -i "$SSH_KEY" "$PI_USER@$HOST:$REMOTE_EXPORT" "$OUTPUT_FILE"
-    
-    # Clean up remote export file
-    ssh -i "$SSH_KEY" "$PI_USER@$HOST" "rm -f $REMOTE_EXPORT" || true
     
 elif [ "$HOST" = "localhost" ]; then
-    # Export from laptop
+    # Export from localhost container
     echo "💻 Exporting from local deployment..."
     
-    # Ensure local app is running for export
-    kamal app start -d local >/dev/null 2>&1 || true
-    sleep 5
+    # Check for running container first
+    container_name=$(docker ps --format '{{.Names}}' | grep routine | head -1)
     
-    # Run export
-    kamal app exec -d local --reuse "bin/rails db:sync:export" >/dev/null
-    
-    # Find and copy export file from container
-    LOCAL_EXPORT_PATH=$(kamal app exec -d local --reuse "ls -t /rails/tmp/db_sync/db_export_*.json 2>/dev/null | head -1" | tr -d '\r\n' || echo "")
-    
-    if [ -z "$LOCAL_EXPORT_PATH" ]; then
-        echo "❌ No export file found in local container"
-        exit 1
+    if [ -z "$container_name" ]; then
+        # No running container, check for stopped containers
+        echo "📦 No running container found, checking for stopped containers..."
+        stopped_container=$(docker ps -a --format '{{.Names}}' | grep routine | head -1)
+        
+        if [ -n "$stopped_container" ]; then
+            echo "📦 Container stopped, starting temporarily for export..."
+            docker start "$stopped_container"
+            sleep 5  # Give container time to start
+            
+            # Check if it started successfully
+            if docker ps --format '{{.Names}}' | grep -q "$stopped_container"; then
+                container_name="$stopped_container"
+                should_stop_after=true
+            else
+                echo "❌ Failed to start stopped container for export"
+                exit 1
+            fi
+        else
+            echo "❌ No routine container found on localhost"
+            exit 1
+        fi
     fi
     
-    kamal app exec -d local --reuse "cat $LOCAL_EXPORT_PATH" > "$OUTPUT_FILE"
+    # Export using SQLite .dump command
+    docker exec "$container_name" sqlite3 /rails/storage/production.sqlite3 .dump > "$OUTPUT_FILE"
     
-    # Clean up container export file
-    kamal app exec -d local --reuse "rm -f $LOCAL_EXPORT_PATH" || true
+    # Stop container if we started it temporarily
+    if [ "$should_stop_after" = "true" ]; then
+        echo "📦 Stopping temporary container..."
+        docker stop "$container_name" >/dev/null
+    fi
+    
+    if [ $? -eq 0 ] && [ -s "$OUTPUT_FILE" ]; then
+        file_size=$(du -h "$OUTPUT_FILE" | cut -f1)
+        echo "✅ Database exported successfully"
+        echo "💾 Size: $file_size"
+        
+        # Verify the export contains essential tables
+        if grep -q "CREATE TABLE.*users" "$OUTPUT_FILE" && grep -q "CREATE TABLE.*reports" "$OUTPUT_FILE"; then
+            echo "✅ Export verification: Essential tables found"
+        else
+            echo "⚠️  Export verification: Some expected tables missing"
+        fi
+    else
+        echo "❌ Database export failed"
+        exit 1
+    fi
     
 else
     echo "❌ Unknown host: $HOST"
     exit 1
 fi
 
-if [ ! -s "$OUTPUT_FILE" ]; then
-    echo "❌ Export failed - output file is empty or missing"
-    exit 1
-fi
-
-echo "✅ Database exported to $OUTPUT_FILE"
-echo "💾 Size: $(du -h "$OUTPUT_FILE" | cut -f1)"
+echo "✅ Database export completed: $OUTPUT_FILE"
