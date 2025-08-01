@@ -313,8 +313,8 @@ start_deployment() {
             return 1
         fi
     elif [ "$host" = "localhost" ]; then
-        # For localhost, we need to recreate the container with proper environment
-        log_info "Creating localhost container with proper environment..."
+        # For localhost, use Kamal deploy for proper lifecycle management
+        log_info "Deploying to localhost using Kamal..."
         
         # First, create a temporary flag in the volume to allow container to start
         docker run --rm -v survey_storage_local:/storage alpine sh -c 'echo "TEMP_FLAG_FOR_STARTUP
@@ -323,7 +323,7 @@ Host: localhost
 Source: temp_startup
 Transfer ID: temp_$(date +%s)" > /storage/ACTIVE_FLAG'
         
-        # Validate 1Password authentication and load secrets
+        # Validate 1Password authentication for Kamal secrets
         log_info "Validating 1Password authentication..."
         
         # Check if 1Password CLI is available and authenticated
@@ -334,47 +334,17 @@ Transfer ID: temp_$(date +%s)" > /storage/ACTIVE_FLAG'
             exit 1
         fi
         
-        # Load secrets from 1Password - these must match what Pi uses
-        log_info "Loading secrets from 1Password..."
-        RAILS_MASTER_KEY=$(op read "op://Personal/Routine Master Key/password" 2>/dev/null)
-        SMTP_PASSWORD=$(op read "op://Personal/Routine SMTP Password/password" 2>/dev/null)
+        log_info "1Password authentication verified"
         
-        # Validate all required secrets were loaded
-        if [ -z "$RAILS_MASTER_KEY" ]; then
-            log_error "Failed to load Rails master key from 1Password"
-            log_error "Please ensure 'Routine Master Key' exists in 1Password Personal vault"
-            exit 1
+        # Use Kamal to deploy to localhost
+        log_info "Deploying with Kamal..."
+        if ! kamal deploy -d local --skip-push 2>/dev/null; then
+            log_error "Kamal deployment to localhost failed"
+            return 1
         fi
         
-        if [ -z "$SMTP_PASSWORD" ]; then
-            log_error "Failed to load SMTP password from 1Password"  
-            log_error "Please ensure 'Routine SMTP Password' exists in 1Password Personal vault"
-            exit 1
-        fi
-        
-        log_info "Successfully loaded all secrets from 1Password"
-        
-        # Remove any existing routine-local container
-        if docker ps -a --format '{{.Names}}' | grep -q "^routine-local$"; then
-            log_info "Removing existing routine-local container..."
-            docker rm -f routine-local >/dev/null 2>&1 || true
-        fi
-        
-        docker run -d --name routine-local \
-            -v survey_storage_local:/rails/storage \
-            -p 3000:3000 \
-            -e RAILS_ENV=production \
-            -e RAILS_MASTER_KEY="$RAILS_MASTER_KEY" \
-            -e SMTP_PASSWORD="$SMTP_PASSWORD" \
-            -e APPLICATION_HOST=localhost \
-            -e SOLID_QUEUE_IN_PUMA=true \
-            josephburnett/routine:latest-local || {
-                log_error "Failed to create localhost container"
-                return 1
-            }
-            
-        # Wait for container to be fully ready with proper health check
-        log_info "Waiting for localhost container to be ready..."
+        # Wait for deployment to be ready with health check
+        log_info "Waiting for localhost deployment to be ready..."
         local ready=false
         local attempts=0
         local max_attempts=30  # 30 seconds timeout
@@ -395,7 +365,7 @@ Transfer ID: temp_$(date +%s)" > /storage/ACTIVE_FLAG'
         if [ "$ready" = false ]; then
             log_error "Localhost deployment failed to become ready within ${max_attempts} seconds"
             # Check container logs for debugging
-            docker logs --tail 20 routine-local || true
+            kamal app logs -d local --tail 20 || docker logs --tail 20 $(docker ps --format '{{.Names}}' | grep routine | head -1) || true
             return 1
         fi
     fi
