@@ -22,7 +22,7 @@ namespace :db do
         Metric, Alert, Report, Dashboard, DashboardMetric,
         DashboardAlert, DashboardForm, DashboardQuestion, DashboardDashboard,
         AlertStatusCache, ReportAlert, ReportMetric,
-        MetricQuestion, SectionQuestion
+        MetricQuestion
       ]
 
       models.each do |model|
@@ -43,6 +43,15 @@ namespace :db do
         export_data[table_name] = records
         puts "  ✅ #{records.count} records exported"
       end
+
+      # Export join tables that don't have models
+      puts "📊 Exporting questions_sections..."
+      join_records = ActiveRecord::Base.connection.execute("SELECT * FROM questions_sections").map do |row|
+        # Convert to hash with string keys
+        row.is_a?(Hash) ? row : Hash[ActiveRecord::Base.connection.columns("questions_sections").map(&:name).zip(row)]
+      end
+      export_data["questions_sections"] = join_records
+      puts "  ✅ #{join_records.count} records exported"
 
       # Save to file
       File.write(export_file, JSON.pretty_generate(export_data))
@@ -92,7 +101,7 @@ namespace :db do
       # Clear existing data (in reverse dependency order)
       puts "🗑️  Clearing existing data..."
       [
-        AlertStatusCache, ReportAlert, ReportMetric, MetricQuestion, SectionQuestion,
+        AlertStatusCache, ReportAlert, ReportMetric, MetricQuestion,
         DashboardMetric, DashboardAlert, DashboardForm, DashboardQuestion, DashboardDashboard,
         Answer, Response, Alert, Report, Dashboard, Metric,
         Section, Question, Form, User
@@ -108,7 +117,7 @@ namespace :db do
         "metrics", "alerts", "reports", "dashboards", "dashboard_metrics",
         "dashboard_alerts", "dashboard_forms", "dashboard_questions", "dashboard_dashboards",
         "alert_status_caches", "report_alerts", "report_metrics",
-        "metric_questions", "section_questions"
+        "metric_questions", "questions_sections"
       ]
 
       import_order.each do |table_name|
@@ -117,22 +126,38 @@ namespace :db do
         records = export_data[table_name]
         puts "📥 Importing #{records.count} records to #{table_name}..."
 
-        model_class = table_name.classify.constantize
-        imported_count = 0
-
-        records.each_with_index do |record_data, index|
-          begin
-            # Handle timestamps and other special fields
-            %w[created_at updated_at].each do |field|
-              if record_data[field]
-                record_data[field] = Time.parse(record_data[field])
-              end
+        if table_name == "questions_sections"
+          # Handle join table without model
+          imported_count = 0
+          records.each_with_index do |record_data, index|
+            begin
+              ActiveRecord::Base.connection.execute(
+                "INSERT INTO questions_sections (question_id, section_id) VALUES (#{record_data['question_id']}, #{record_data['section_id']})"
+              )
+              imported_count += 1
+            rescue => e
+              puts "  ⚠️  Warning: Failed to import record #{index + 1}: #{e.message}"
             end
+          end
+        else
+          # Handle regular model tables
+          model_class = table_name.classify.constantize
+          imported_count = 0
 
-            model_class.create!(record_data)
-            imported_count += 1
-          rescue => e
-            puts "  ⚠️  Warning: Failed to import record #{index + 1}: #{e.message}"
+          records.each_with_index do |record_data, index|
+            begin
+              # Handle timestamps and other special fields
+              %w[created_at updated_at].each do |field|
+                if record_data[field]
+                  record_data[field] = Time.parse(record_data[field])
+                end
+              end
+
+              model_class.create!(record_data)
+              imported_count += 1
+            rescue => e
+              puts "  ⚠️  Warning: Failed to import record #{index + 1}: #{e.message}"
+            end
           end
         end
 
@@ -165,7 +190,7 @@ namespace :db do
         Metric, Alert, Report, Dashboard, DashboardMetric,
         DashboardAlert, DashboardForm, DashboardQuestion, DashboardDashboard,
         AlertStatusCache, ReportAlert, ReportMetric,
-        MetricQuestion, SectionQuestion
+        MetricQuestion
       ]
 
       puts "📋 Record Counts:"
