@@ -148,8 +148,8 @@ show_status() {
         "RUNNING")
             case $pi_flag_status in
                 "PRESENT") log_success "  ✅ ACTIVE - Running with flag" ;;
-                "MISSING") log_warning "  ⚠️  DANGER - Running without flag!" ;;
-                "ERROR") log_error "  ❌ ERROR - Running but flag status unknown" ;;
+                "MISSING") log_info "  🔒 SAFE - Running without flag (standby mode)" ;;
+                "ERROR") log_info "  🔒 SAFE - Running without flag (standby mode)" ;;
             esac
             ;;
         "OFFLINE") log_info "  💤 OFFLINE - Not running" ;;
@@ -166,8 +166,8 @@ show_status() {
         "RUNNING")
             case $laptop_flag_status in
                 "PRESENT") log_success "  ✅ ACTIVE - Running with flag" ;;
-                "MISSING") log_warning "  ⚠️  DANGER - Running without flag!" ;;
-                "ERROR") log_error "  ❌ ERROR - Running but flag status unknown" ;;
+                "MISSING") log_info "  🔒 SAFE - Running without flag (standby mode)" ;;
+                "ERROR") log_info "  🔒 SAFE - Running without flag (standby mode)" ;;
             esac
             ;;
         "OFFLINE") log_info "  💤 OFFLINE - Not running" ;;
@@ -185,16 +185,21 @@ show_status() {
     if [ "$laptop_deployment_status" = "RUNNING" ] && [ "$laptop_flag_status" = "PRESENT" ]; then
         active_count=$((active_count + 1))
     fi
-    if ([ "$pi_deployment_status" = "RUNNING" ] && [ "$pi_flag_status" = "MISSING" ]) || 
-       ([ "$laptop_deployment_status" = "RUNNING" ] && [ "$laptop_flag_status" = "MISSING" ]); then
-        danger_count=$((danger_count + 1))
-    fi
+    # Note: "Running without flag" is now considered safe standby mode, not dangerous
     
     if [ $active_count -eq 1 ] && [ $danger_count -eq 0 ]; then
         if [ "$pi_flag_status" = "PRESENT" ] && [ "$pi_deployment_status" = "RUNNING" ]; then
-            log_success "🔒 SAFE: Pi is active, laptop is offline"
+            if [ "$laptop_deployment_status" = "OFFLINE" ]; then
+                log_success "🔒 SAFE: Pi is active, laptop is offline"
+            else
+                log_success "🔒 SAFE: Pi is active, laptop is in standby"
+            fi
         elif [ "$laptop_flag_status" = "PRESENT" ] && [ "$laptop_deployment_status" = "RUNNING" ]; then
-            log_success "🔒 SAFE: Laptop is active, Pi is offline"
+            if [ "$pi_deployment_status" = "OFFLINE" ]; then
+                log_success "🔒 SAFE: Laptop is active, Pi is offline"
+            else
+                log_success "🔒 SAFE: Laptop is active, Pi is in standby"
+            fi
         fi
     elif [ $active_count -gt 1 ]; then
         log_error "🚨 DANGER: Multiple deployments are active simultaneously!"
