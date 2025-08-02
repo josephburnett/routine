@@ -66,7 +66,10 @@ class ResponsesController < ApplicationController
         @response.update_timestamp!(new_datetime) if new_datetime
       rescue ArgumentError => e
         Rails.logger.warn "Invalid datetime format: #{params[:response][:response_datetime]} - #{e.message}"
-        # Continue with other updates even if datetime parsing fails
+        flash[:alert] = "Invalid date format. Please use a valid date and time."
+      rescue StandardError => e
+        Rails.logger.error "Failed to update response timestamp: #{e.message}"
+        flash[:alert] = "Failed to update response date and time. Please try again."
       end
     end
 

@@ -165,7 +165,7 @@ if [ "$target" = "pi" ]; then
     log_info "Your app is running at: http://home.local:3000"
     log_info "To transfer to laptop: ./scripts/transfer_flag.sh localhost"
 else
-    log_info "Your app is running at: http://localhost:3000"
+    log_info "Your app is running at: http://localhost:8080"
     log_info "To transfer to Pi: ./scripts/transfer_flag.sh home.local"
 fi
 echo

@@ -17,6 +17,7 @@ servers:
 # Proxy configuration for local deployment
 proxy:
   app_port: 3000
+  host: localhost:8080
 
 # Credentials for your image host.
 registry:

@@ -74,7 +74,7 @@ check_deployment_status() {
     local url
     
     if [ "$host" = "localhost" ]; then
-        url="http://localhost:3000/up"
+        url="http://localhost:8080/up"
     elif [ "$host" = "$PI_HOST" ]; then
         url="http://home.local/up"
     else
@@ -350,7 +350,7 @@ Transfer ID: temp_$(date +%s)" > /storage/ACTIVE_FLAG'
         local max_attempts=30  # 30 seconds timeout
         
         while [ $attempts -lt $max_attempts ] && [ "$ready" = false ]; do
-            if curl -s --connect-timeout 2 --max-time 3 "http://localhost:3000/up" >/dev/null 2>&1; then
+            if curl -s --connect-timeout 2 --max-time 3 "http://localhost:8080/up" >/dev/null 2>&1; then
                 ready=true
                 log_success "Localhost deployment started and responding"
             else
@@ -614,7 +614,7 @@ transfer_flag() {
         log_success "✅ Safe state achieved: Only $target_host is active"
         
         if [ "$target_host" = "$LAPTOP_HOST" ]; then
-            echo "🌍 Your app is now available at: http://localhost:3000"
+            echo "🌍 Your app is now available at: http://localhost:8080"
             echo "✈️  Ready for travel!"
         else
             echo "🏠 Your app is now available at: http://home.local"

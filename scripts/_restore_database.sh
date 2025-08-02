@@ -130,7 +130,7 @@ echo
 echo "✅ Database restored to laptop successfully!"
 echo
 echo "📋 Next steps:"
-echo "1. Open your local app: http://localhost:3000"
+echo "1. Open your local app: http://localhost:8080"
 echo "2. Verify your data is correctly imported"
 echo "3. When you return home, use './scripts/sync_back_to_pi.sh' to sync changes back"
 echo

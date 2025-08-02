@@ -57,7 +57,7 @@ check_should_be_active() {
 
 # Check if deployment is currently running
 check_is_running() {
-    if curl -s --connect-timeout 2 --max-time 3 "http://localhost:3000/up" >/dev/null 2>&1; then
+    if curl -s --connect-timeout 2 --max-time 3 "http://localhost:8080/up" >/dev/null 2>&1; then
         return 0  # Is running
     else
         return 1  # Not running
@@ -124,7 +124,7 @@ main() {
                 
                 if check_is_running; then
                     log_success "Deployment is already running"
-                    curl -s http://localhost:3000/up >/dev/null && log_success "Application is responding correctly"
+                    curl -s http://localhost:8080/up >/dev/null && log_success "Application is responding correctly"
                 else
                     log_warning "Deployment should be running but isn't - restarting..."
                     restart_deployment

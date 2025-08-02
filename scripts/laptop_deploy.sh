@@ -101,7 +101,7 @@ deploy_app() {
         local max_attempts=30
         
         while [ $attempts -lt $max_attempts ]; do
-            if curl -s --connect-timeout 2 --max-time 3 "http://localhost:3000/up" >/dev/null 2>&1; then
+            if curl -s --connect-timeout 2 --max-time 3 "http://localhost:8080/up" >/dev/null 2>&1; then
                 log_success "Deployment is running and responding"
                 return 0
             fi
@@ -161,9 +161,9 @@ show_status() {
     fi
     
     # Check if running
-    if curl -s --connect-timeout 2 --max-time 3 "http://localhost:3000/up" >/dev/null 2>&1; then
+    if curl -s --connect-timeout 2 --max-time 3 "http://localhost:8080/up" >/dev/null 2>&1; then
         log_success "Application is running and responding"
-        echo "🌍 Available at: http://localhost:3000"
+        echo "🌍 Available at: http://localhost:8080"
     else
         log_warning "Application is not responding"
     fi
@@ -218,7 +218,7 @@ main() {
             
             echo
             log_success "🎉 Deployment completed successfully!"
-            echo "🌍 Your app is available at: http://localhost:3000"
+            echo "🌍 Your app is available at: http://localhost:8080"
             echo "📱 Use './scripts/transfer_flag.sh --status' to check system status"
             ;;
         *)
