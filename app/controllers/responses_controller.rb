@@ -75,9 +75,9 @@ class ResponsesController < ApplicationController
 
     # Handle other response attributes
     response_attrs = response_params.except(:answers_attributes, :response_datetime)
-    if response_attrs.any? && @response.update(response_attrs)
+    if response_attrs.present? && @response.update(response_attrs)
       redirect_to @response, notice: "Response updated successfully"
-    elsif response_attrs.empty?
+    elsif response_attrs.blank?
       redirect_to @response, notice: "Response updated successfully"
     else
       @forms = current_user.forms.not_deleted
