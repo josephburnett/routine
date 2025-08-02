@@ -79,7 +79,8 @@ check_1password() {
 build_image() {
     log_info "Building new Docker image from current code..."
     
-    if kamal build -d local; then
+    # Use kamal build push to create and push the image (this part works without SSH)
+    if kamal build push -d local; then
         log_success "Image built successfully"
         return 0
     else
@@ -90,10 +91,32 @@ build_image() {
 
 # Deploy the application
 deploy_app() {
-    log_info "Deploying to laptop using Kamal..."
+    log_info "Deploying to laptop using Docker directly..."
     
-    if kamal deploy -d local; then
-        log_success "Deployment completed"
+    # Stop and remove existing containers if they exist
+    for container_name in routine-local routine-local-new; do
+        if docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
+            log_info "Stopping existing container: $container_name"
+            docker stop "$container_name" >/dev/null 2>&1 || true
+            docker rm "$container_name" >/dev/null 2>&1 || true
+        fi
+    done
+    
+    # Start new container with proper configuration
+    log_info "Starting new container..."
+    if docker run -d \
+        --name routine-local \
+        --restart unless-stopped \
+        -p 8080:3000 \
+        -v survey_storage_local:/rails/storage \
+        -e RAILS_ENV=production \
+        -e RAILS_MASTER_KEY="$(op read 'op://Personal/Routine Master Key/password')" \
+        -e SMTP_PASSWORD="$(op read 'op://Personal/Routine SMTP Password/password')" \
+        -e SOLID_QUEUE_IN_PUMA=true \
+        -e APPLICATION_HOST=localhost \
+        josephburnett/routine:latest-local >/dev/null; then
+        
+        log_success "Container started successfully"
         
         # Wait for it to be ready
         log_info "Waiting for deployment to be ready..."
@@ -112,12 +135,12 @@ deploy_app() {
             fi
         done
         
-        log_error "Deployment completed but not responding after ${max_attempts}s"
-        log_info "Check logs with: kamal app logs -d local"
+        log_error "Container started but not responding after ${max_attempts}s"
+        log_info "Check logs with: docker logs routine-local"
         return 1
     else
-        log_error "Deployment failed"
-        log_info "Check logs with: kamal app logs -d local"
+        log_error "Failed to start container"
+        log_info "Check logs with: docker logs routine-local"
         return 1
     fi
 }
@@ -171,10 +194,11 @@ show_status() {
     # Show container status
     echo
     log_info "Container status:"
-    kamal app details -d local 2>/dev/null || {
-        log_info "No Kamal deployment found, checking Docker directly:"
-        docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep routine || log_info "No routine containers found"
-    }
+    if docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep routine >/dev/null 2>&1; then
+        docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep routine
+    else
+        log_info "No routine containers found"
+    fi
 }
 
 # Main function
