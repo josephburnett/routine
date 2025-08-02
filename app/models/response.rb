@@ -46,10 +46,10 @@ class Response < ApplicationRecord
     return unless created_at_previously_changed?
 
     old_time, new_time = created_at_previously_changed?
-    
+
     # Guard against nil values that can cause NoMethodError
     return unless old_time && new_time
-    
+
     time_diff = new_time - old_time
 
     answers.not_deleted.each do |answer|
