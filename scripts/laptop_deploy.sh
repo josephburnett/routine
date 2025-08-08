@@ -46,8 +46,8 @@ Requirements:
 
 The script will:
 1. Check if laptop should be active (safety check)
-2. Build new Docker image from current code
-3. Deploy using Kamal
+2. Build new Docker image locally (no network upload)
+3. Deploy using Docker directly
 4. Verify deployment is working
 5. Run tests if available
 
@@ -79,8 +79,8 @@ check_1password() {
 build_image() {
     log_info "Building new Docker image from current code..."
     
-    # Use kamal build push to create and push the image (this part works without SSH)
-    if kamal build push -d local; then
+    # Build image locally without pushing to registry (travel-friendly)
+    if docker build -t routine:local .; then
         log_success "Image built successfully"
         return 0
     else
@@ -114,7 +114,7 @@ deploy_app() {
         -e SMTP_PASSWORD="$(op read 'op://Personal/Routine SMTP Password/password')" \
         -e SOLID_QUEUE_IN_PUMA=true \
         -e APPLICATION_HOST=localhost \
-        josephburnett/routine:latest-local >/dev/null; then
+        routine:local >/dev/null; then
         
         log_success "Container started successfully"
         
