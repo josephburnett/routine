@@ -4,7 +4,13 @@ class MetricSeriesCache < ApplicationRecord
   scope :fresh, -> { where("calculated_at > ?", 1.hour.ago) }
 
   def fresh?
-    calculated_at && calculated_at > metric.updated_at && calculated_at > 1.hour.ago
+    return false unless calculated_at && calculated_at > 1.hour.ago && calculated_at > metric.updated_at
+
+    # Check if cache is newer than any source data that should affect this metric
+    latest_source_data_time = metric.latest_source_data_timestamp
+    return false if latest_source_data_time && calculated_at < latest_source_data_time
+
+    true
   end
 
   def self.update_for_metric(metric)

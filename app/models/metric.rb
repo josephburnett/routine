@@ -128,6 +128,41 @@ class Metric < ApplicationRecord
     end
   end
 
+  def latest_source_data_timestamp
+    # Find the latest timestamp from all source data that affects this metric
+    timestamps = []
+
+    # Get latest timestamps from connected questions (via answers)
+    questions.each do |question|
+      latest_answer = Answer.joins(:question)
+                           .left_joins(:response)
+                           .where(questions: { id: question.id })
+                           .where(
+                             "(responses.user_id = ? OR (answers.response_id IS NULL AND answers.user_id = ?))",
+                             user_id, user_id
+                           )
+                           .where(deleted: false)
+                           .order(:created_at)
+                           .last
+
+      timestamps << latest_answer.created_at if latest_answer
+    end
+
+    # Get latest cache timestamps from child metrics (recursively)
+    child_metrics.each do |child_metric|
+      child_latest = child_metric.latest_source_data_timestamp
+      timestamps << child_latest if child_latest
+
+      # Also consider the child metric's cache timestamp
+      if child_metric.metric_series_cache
+        timestamps << child_metric.metric_series_cache.calculated_at
+      end
+    end
+
+    # Return the latest timestamp, or nil if no source data exists
+    timestamps.compact.max
+  end
+
   private
 
   def collect_all_source_series
@@ -288,6 +323,11 @@ class Metric < ApplicationRecord
         elsif target_bucket_start.hour == 0 && target_bucket_start.min == 0 && target_bucket_start.sec == 0 &&
               source_time.to_date == target_bucket_start.to_date
           # Hourly source contributes to daily target
+          applicable_values << source_value
+        # Case 4: Daily source to weekly target - check if source falls within target week
+        elsif source_time.hour == 0 && source_time.min == 0 && source_time.sec == 0 &&
+              target_bucket_end && source_time >= target_bucket_start && source_time < target_bucket_end
+          # Daily source contributes to weekly/monthly target bucket
           applicable_values << source_value
         end
       end

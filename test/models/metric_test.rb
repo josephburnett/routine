@@ -507,6 +507,86 @@ class MetricTest < ActiveSupport::TestCase
     assert_in_delta expected_average, series.first.last, 0.01, "Different answer types should convert to numeric and be averaged correctly"
   end
 
+  # =============================================================================
+  # REBUCKETING TESTS (Daily -> Weekly conversions)
+  # =============================================================================
+
+  test "daily to weekly rebucketing aggregates correctly" do
+    # Create daily metric first
+    daily_metric = create_metric(width: "90_days", resolution: "day")
+
+    # Create answers for different days within the 90-day window
+    create_answer(value: 2.5, time: (@fixed_time - 10.days).beginning_of_day) # 10 days ago
+    create_answer(value: 3.0, time: (@fixed_time - 5.days).beginning_of_day) # 5 days ago
+    create_answer(value: 1.5, time: (@fixed_time - 1.day).beginning_of_day) # Yesterday
+
+    # Create weekly metric that sums the daily metric
+    weekly_metric = Metric.create!(
+      user: @user,
+      width: "90_days",
+      resolution: "week",
+      function: "sum",
+      name: "Weekly Test Metric"
+    )
+
+    # Connect weekly metric to daily metric via MetricMetric relationship
+    MetricMetric.create!(
+      parent_metric: weekly_metric,
+      child_metric: daily_metric
+    )
+
+    # Test daily metric shows individual days
+    daily_series = daily_metric.series
+    daily_values = daily_series.map { |_, value| value }.select { |v| v > 0 }
+    assert_equal 3, daily_values.length, "Daily metric should show 3 running days"
+    assert_includes daily_values, 2.5
+    assert_includes daily_values, 3.0
+    assert_includes daily_values, 1.5
+
+    # Test weekly metric sums the week correctly
+    weekly_series = weekly_metric.series
+    non_zero_weekly = weekly_series.select { |_, value| value > 0 }
+    weekly_total = non_zero_weekly.sum { |_, value| value }
+    assert_equal 7.0, weekly_total, "Weekly total should sum all daily values (2.5 + 3.0 + 1.5 = 7.0)"
+  end
+
+  test "rebucketing handles metrics created after source data exists" do
+    # This tests the specific bug scenario that was fixed
+
+    # Step 1: Create historical answers BEFORE any metrics exist
+    historical_time1 = @fixed_time - 10.days
+    historical_time2 = @fixed_time - 3.days
+
+    create_answer(value: 2.53, time: historical_time1) # 10 days ago
+    create_answer(value: 3.38, time: historical_time2) # 3 days ago
+
+    # Step 2: Create metrics AFTER the answer data exists (simulates original bug)
+    daily_metric = create_metric(width: "90_days", resolution: "day")
+    weekly_metric = Metric.create!(
+      user: @user, width: "90_days", resolution: "week", function: "sum", name: "Late Weekly"
+    )
+    MetricMetric.create!(parent_metric: weekly_metric, child_metric: daily_metric)
+
+    # Step 3: Verify both daily and weekly metrics show the historical data correctly
+    daily_series = daily_metric.series
+    historical_daily = daily_series.select { |date, value| value > 0 }
+
+    assert_equal 2, historical_daily.length, "Daily metric should show both historical answers"
+    daily_values = historical_daily.map { |_, value| value }
+    assert_includes daily_values, 2.53
+    assert_includes daily_values, 3.38
+
+    # Step 4: Verify weekly aggregation works despite creation order
+    weekly_series = weekly_metric.series
+    historical_weekly = weekly_series.select { |date, value| value > 0 }
+
+    # Should have 2 weeks with data (historical answers were 7 days apart)
+    assert_equal 2, historical_weekly.length, "Weekly metric should show 2 weeks with data"
+    weekly_values = historical_weekly.map { |_, value| value }
+    assert_includes weekly_values, 2.53, "Should include week with 2.53 miles"
+    assert_includes weekly_values, 3.38, "Should include week with 3.38 miles"
+  end
+
   private
 
   def create_metric(width:, resolution:, scale: nil, wrap: "none")
@@ -525,16 +605,14 @@ class MetricTest < ActiveSupport::TestCase
   end
 
   def create_answer(value:, time:, answer_type: "number")
-    travel_to time do
-      Answer.create!(
-        question: @question,
-        response: @response,
-        user: @user,
-        answer_type: answer_type,
-        number_value: answer_type == "number" ? value : nil,
-        bool_value: answer_type == "bool" ? value : nil,
-        created_at: time
-      )
-    end
+    Answer.create!(
+      question: @question,
+      response: @response,
+      user: @user,
+      answer_type: answer_type,
+      number_value: answer_type == "number" ? value : nil,
+      bool_value: answer_type == "bool" ? value : nil,
+      created_at: time
+    )
   end
 end
