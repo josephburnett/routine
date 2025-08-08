@@ -70,8 +70,6 @@
                         <%= item.display_name %>
                       <% when 'Alerts' %>
                         <%= item.display_name %>
-                      <% when 'Dashboards' %>
-                        <%= item.name %>
                       <% end %>
                     </h4>
                     
@@ -90,8 +88,6 @@
                       <p>Function: <%= item.function.capitalize %></p>
                     <% when 'Alerts' %>
                       <p>Metric: <%= item.metric.display_name %> • <%= item.direction.capitalize %> <%= item.threshold %></p>
-                    <% when 'Dashboards' %>
-                      <p><%= pluralize(item.metrics.count, 'metric') %></p>
                     <% end %>
                     
                     <p><strong>Created:</strong> <%= item.created_at.strftime("%B %d, %Y") %></p>

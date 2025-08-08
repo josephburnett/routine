@@ -59,13 +59,6 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :dashboards do
-    member do
-      patch :soft_delete
-      post :answer_question
-      post :refresh_cache
-    end
-  end
 
   resources :namespaces, only: [ :index, :show ] do
     member do

@@ -7,7 +7,6 @@
   <%= link_to "Metrics", namespace_aware_path(Metric, :metrics_path), class: (controller_name == 'metrics' ? 'active' : '') %>
   <%= link_to "Alerts", namespace_aware_path(Alert, :alerts_path), class: (controller_name == 'alerts' ? 'active' : '') %>
   <%= link_to "Reports", namespace_aware_path(Report, :reports_path), class: (controller_name == 'reports' ? 'active' : '') %>
-  <%= link_to "Dashboards", namespace_aware_path(Dashboard, :dashboards_path), class: (controller_name == 'dashboards' ? 'active' : '') %>
   <%= link_to "Namespaces", namespace_aware_namespaces_path, class: (controller_name == 'namespaces' ? 'active' : '') %>
   <%= link_to "Settings", namespace_aware_settings_path, class: (controller_name == 'settings' ? 'active' : '') %>
   <%= link_to "Logout", logout_path, data: { "turbo-method": :delete } %>

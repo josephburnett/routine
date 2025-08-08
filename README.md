@@ -4,7 +4,7 @@ A Ruby on Rails application for tracking personal routines through customizable 
 
 ## Overview
 
-Routine Tracker helps you collect, organize, and analyze personal data through structured surveys and forms. Whether you're tracking pool maintenance, meditation habits, running miles, or any other routine data, this application provides the tools to capture information consistently and gain insights through metrics, dashboards, alerts, and automated reports.
+Routine Tracker helps you collect, organize, and analyze personal data through structured surveys and forms. Whether you're tracking pool maintenance, meditation habits, running miles, or any other routine data, this application provides the tools to capture information consistently and gain insights through metrics, alerts, and automated reports.
 
 > **Self-Hosted Only**: This is a personal data tracking application designed for self-hosting. I don't provide a hosted service and don't want your data - you run it yourself, you control your data completely.
 
@@ -29,7 +29,6 @@ Forms
 ### Analytics & Automation
 
 - **Metrics**: Transform raw data into time-series analytics with functions (answer, sum, average, difference, count), time resolutions (5min to monthly), and gap-filling strategies (none, zero, previous, linear)
-- **Dashboards**: Customizable views combining metrics, quick questions, form links, and alerts
 - **Alerts**: Smart monitoring with threshold-based notifications and configurable delays
 - **Reports**: Automated email reports with flexible scheduling and rich HTML formatting
 - **Backups**: Daily encrypted backups with manual testing capabilities
@@ -54,7 +53,7 @@ Forms
 
 ### 🔔 **Smart Monitoring**
 - Threshold-based alerts with configurable delays to avoid false alarms
-- Visual status indicators with dashboard integration
+- Visual status indicators in alerts and reports
 - Automated email reports with flexible scheduling (daily, weekly, monthly)
 
 ### 🔒 **Data Protection**
@@ -95,12 +94,17 @@ Questions:
 
 ### Home Management
 ```
-Dashboard Setup:
-├── Quick daily checkboxes (water plants, check mail)
-├── Weekly maintenance form link
-├── Utility monitoring metrics (water pressure, temperature)
-└── Alert when tasks aren't completed for 3+ days
+Questions:
+├── Water Plants (bool) - daily task
+├── Check Mail (bool) - daily task
+├── Water Pressure (number) - utility monitoring
+└── Temperature (number) - environmental tracking
 ```
+
+**Analytics:**
+- Alert when plants haven't been watered for 2+ days
+- Track utility readings over time with trend analysis
+- Weekly report showing task completion rates
 
 ## Getting Started
 
@@ -131,7 +135,7 @@ Dashboard Setup:
 2. **Answer Questions** - Use the "Answer" button for quick daily tracking
 3. **Create Metrics** - Transform questions into analytics with time-series visualization
 4. **Set Alerts** - Get notified when routines are missed (e.g., filter not cleaned for 3+ days)
-5. **Build Dashboard** - Combine metrics, quick questions, and alerts in one view
+5. **Create Reports** - Schedule automated email reports with metrics and alerts
 6. **Configure Automation** - Enable backups and create reports in Settings
 
 ### Production Deployment
@@ -157,7 +161,6 @@ Deployed using [Kamal](https://kamal-deploy.org/) with background job processing
 ```ruby
 User → Forms → Sections → Questions → Answers
 User → Metrics (analyze Questions)
-User → Dashboards (display Metrics + Questions)
 User → Alerts (monitor Metrics)
 User → Reports (schedule Metrics + Alerts)
 ```

@@ -3,13 +3,13 @@ module ApplicationHelper
     namespaces = Set.new
 
     # Collect all possible namespaces from all namespaceable models
-    [ Form, Section, Question, Answer, Response, Metric, Alert, Dashboard ].each do |model|
+    [ Form, Section, Question, Answer, Response, Metric, Alert ].each do |model|
       namespaces.merge(model.namespaces_for_user(user))
     end
 
     # Filter out namespaces that don't actually have any entities
     active_namespaces = namespaces.select do |namespace|
-      [ Form, Section, Question, Answer, Response, Metric, Alert, Dashboard ].any? do |model|
+      [ Form, Section, Question, Answer, Response, Metric, Alert ].any? do |model|
         model.where(user: user, namespace: namespace).exists?
       end
     end
@@ -35,8 +35,6 @@ module ApplicationHelper
       @metric.namespace
     elsif instance_variable_defined?("@alert") && @alert
       @alert.namespace
-    elsif instance_variable_defined?("@dashboard") && @dashboard
-      @dashboard.namespace
     elsif instance_variable_defined?("@namespace") && @namespace
       @namespace.name
     elsif params[:namespace]
