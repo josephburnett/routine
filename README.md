@@ -174,6 +174,19 @@ This is a personal project demonstrating:
 - Comprehensive caching and performance optimization
 - Auto-save functionality with Turbo integration
 
+## Acknowledgments
+
+This entire application was developed through collaboration with **Claude**, Anthropic's AI assistant, using [Claude Code](https://claude.ai/code). Claude authored virtually all of the codebase including:
+
+- Complete Rails application architecture and implementation
+- All models, controllers, views, and database migrations  
+- Time-series analytics engine with rebucketing and caching
+- Background job processing and email reporting systems
+- Comprehensive test suites and performance optimizations
+- Deployment scripts and production configuration
+
+The project represents a successful human-AI collaboration, where Joseph Burnett provided product vision, requirements, and occasional minor edits, while Claude handled the complete technical implementation. This demonstrates the potential for AI-assisted development in creating production-ready applications.
+
 ## License
 
 MIT License - Copyright (c) 2025 Joseph Burnett
