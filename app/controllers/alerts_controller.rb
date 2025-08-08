@@ -66,6 +66,6 @@ class AlertsController < ApplicationController
   end
 
   def alert_params
-    params.require(:alert).permit(:name, :metric_id, :threshold, :direction, :namespace, :delay, :message)
+    params.require(:alert).permit(:name, :metric_id, :threshold, :direction, :namespace, :delay, :message, :disabled)
   end
 end

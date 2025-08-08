@@ -39,7 +39,6 @@ class Metric < ApplicationRecord
   after_save :create_child_associations
 
   scope :not_deleted, -> { where(deleted: false) }
-  scope :enabled, -> { where(disabled: false) }
 
   after_update :invalidate_caches
   after_destroy :invalidate_dependent_caches

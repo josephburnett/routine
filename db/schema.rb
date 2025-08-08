@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_18_151317) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_08_011847) do
   create_table "alert_status_caches", force: :cascade do |t|
     t.integer "alert_id", null: false
     t.boolean "is_activated", default: false
@@ -35,6 +35,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_18_151317) do
     t.datetime "updated_at", null: false
     t.integer "delay", default: 1, null: false
     t.text "message"
+    t.boolean "disabled", default: false, null: false
     t.index ["metric_id"], name: "index_alerts_on_metric_id"
     t.index ["namespace"], name: "index_alerts_on_namespace"
     t.index ["user_id", "deleted"], name: "index_alerts_on_user_id_and_deleted"
@@ -194,7 +195,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_18_151317) do
     t.string "namespace", default: "", null: false
     t.string "wrap", default: "none", null: false
     t.string "fill", default: "none"
-    t.boolean "disabled", default: false, null: false
     t.index ["first_metric_id"], name: "index_metrics_on_first_metric_id"
     t.index ["namespace"], name: "index_metrics_on_namespace"
     t.index ["user_id"], name: "index_metrics_on_user_id"

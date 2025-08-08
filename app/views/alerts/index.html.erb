@@ -43,9 +43,12 @@
       <div class="index-grid">
         <% @items.each do |alert| %>
           <div class="index-card">
-            <h3><%= link_to alert.display_name, alert_path(alert) %></h3>
+            <h3>
+              <%= link_to alert.display_name, alert_path(alert) %>
+              <span style="display: inline-block; width: 16px; height: 16px; border-radius: 50%; background-color: <%= alert.disabled? ? '#999' : '#28a745' %>; margin-left: 8px;"></span>
+            </h3>
             <p><strong>Metric:</strong> <%= link_to alert.metric.display_name, metric_path(alert.metric) %></p>
-            <p><strong>Threshold:</strong> <%= alert.direction.capitalize %> <%= alert.threshold %></p>
+            <p><strong>Threshold:</strong> <%= alert.direction.capitalize %> <%= alert.threshold %><%= " (disabled)" if alert.disabled? %></p>
             <p><strong>Created:</strong> <%= alert.created_at.strftime("%B %d, %Y") %></p>
             <div class="index-card-actions">
               <%= link_to "View", alert_path(alert) %>

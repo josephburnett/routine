@@ -12,7 +12,10 @@
 
   <div class="card">
     <h3>Alert Details</h3>
-    <p><strong>Name:</strong> <%= @alert.name %></p>
+    <p><strong>Name:</strong> <%= @alert.name %>
+      <span style="display: inline-block; width: 20px; height: 20px; border-radius: 50%; background-color: <%= @alert.disabled? ? '#999' : '#28a745' %>; margin-left: 8px;"></span>
+    </p>
+    <p><strong>Status:</strong> <%= @alert.disabled? ? 'Disabled' : 'Enabled' %></p>
     <p><strong>Metric:</strong> <%= link_to @alert.metric.display_name, metric_path(@alert.metric, namespace: @alert.metric.namespace) %></p>
     <p><strong>Threshold:</strong> <%= @alert.direction.capitalize %> <%= @alert.threshold %></p>
     <p><strong>Delay:</strong> <%= @alert.delay %> data point<%= @alert.delay > 1 ? 's' : '' %></p>

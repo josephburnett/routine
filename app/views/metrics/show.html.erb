@@ -4,7 +4,6 @@
   <div class="index-header">
     <div style="display: flex; align-items: center; gap: 12px;">
       <h1><%= @metric.display_name %></h1>
-      <span style="display: inline-block; width: 20px; height: 20px; border-radius: 50%; background-color: <%= @metric.disabled? ? '#999' : '#28a745' %>;"></span>
     </div>
     <div style="display: flex; gap: 0.5rem;">
       <%= button_to "Refresh Cache", refresh_cache_metric_path(@metric), method: :post, class: "btn btn-secondary" %>
@@ -24,7 +23,6 @@
       <p><strong>Wrap:</strong> <%= @metric.wrap %></p>
     <% end %>
     <p><strong>Fill missing data:</strong> <%= @metric.fill || 'none' %></p>
-    <p><strong>Status:</strong> <%= @metric.disabled? ? 'Disabled' : 'Enabled' %></p>
     
     <% if @metric.function == 'answer' %>
       <% if @metric.scale.present? && @metric.scale != 1.0 %>

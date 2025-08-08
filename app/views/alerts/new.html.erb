@@ -53,6 +53,14 @@
         <small class="form-text text-muted">This message will be included in alert emails to help you understand the context and suggested actions.</small>
       </div>
 
+      <div class="field">
+        <%= form.label :disabled do %>
+          <%= form.check_box :disabled %>
+          Disable this alert
+        <% end %>
+        <small class="form-text text-muted">Disabled alerts will never activate and appear grey in the interface</small>
+      </div>
+
       <div class="actions">
         <%= form.submit "Create Alert", class: "btn btn-primary" %>
         <%= link_to "Cancel", alerts_path(namespace: params[:namespace]), class: "btn btn-secondary" %>

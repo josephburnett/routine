@@ -14,12 +14,16 @@ class Alert < ApplicationRecord
   validates :delay, presence: true, numericality: { greater_than: 0, only_integer: true }
 
   scope :not_deleted, -> { where(deleted: false) }
+  scope :enabled, -> { where(disabled: false) }
 
   def soft_delete!
     update!(deleted: true)
   end
 
   def activated?
+    # Disabled alerts are never activated
+    return false if disabled?
+
     # Use cached data if available and fresh
     if alert_status_cache&.fresh?
       return alert_status_cache.is_activated
@@ -109,10 +113,12 @@ class Alert < ApplicationRecord
   end
 
   def status_color
+    return "#999" if disabled?
     activated? ? "red" : "green"
   end
 
   def status_text
+    return "Disabled" if disabled?
     activated? ? "Activated" : "Deactivated"
   end
 
