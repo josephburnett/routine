@@ -25,15 +25,16 @@
       
       <%= render 'shared/namespace_field', form: form %>
 
-      <div class="field">
+      <div class="field time-field" style="<%= @report.interval_type == 'none' ? 'display: none;' : 'display: block;' %>">
         <%= form.label :time_of_day, "Time of Day" %>
-        <%= form.time_field :time_of_day, required: true %>
+        <%= form.time_field :time_of_day, class: 'time-input' %>
         <small style="display: block; color: #666; margin-top: 0.25rem;">When should this report be sent?</small>
       </div>
 
       <div class="field">
-        <%= form.label :interval_type, "Interval Type" %>
-        <%= form.select :interval_type, [['Weekly', 'weekly'], ['Monthly', 'monthly']], { prompt: 'Select interval' }, { required: true, id: 'report_interval_type' } %>
+        <%= form.label :interval_type, "Email Frequency" %>
+        <%= form.select :interval_type, [['Weekly', 'weekly'], ['Monthly', 'monthly'], ['None (View only)', 'none']], { prompt: 'Select frequency' }, { required: true, id: 'report_interval_type' } %>
+        <small style="display: block; color: #666; margin-top: 0.25rem;">Choose when this report should be emailed, or "None" for view-only reports</small>
       </div>
 
       <div class="field interval-config weekly-config" style="<%= @report.interval_type == 'weekly' ? 'display: block;' : 'display: none;' %>">
@@ -97,18 +98,31 @@ document.addEventListener('turbo:load', function() {
   const intervalSelect = document.querySelector('#report_interval_type');
   const weeklyConfig = document.querySelector('.weekly-config');
   const monthlyConfig = document.querySelector('.monthly-config');
+  const timeField = document.querySelector('.time-field');
+  const timeInput = document.querySelector('.time-input');
   
-  if (intervalSelect && weeklyConfig && monthlyConfig) {
+  if (intervalSelect && weeklyConfig && monthlyConfig && timeField && timeInput) {
     intervalSelect.addEventListener('change', function() {
       if (this.value === 'weekly') {
         weeklyConfig.style.display = 'block';
         monthlyConfig.style.display = 'none';
+        timeField.style.display = 'block';
+        timeInput.setAttribute('required', 'required');
       } else if (this.value === 'monthly') {
         weeklyConfig.style.display = 'none';
         monthlyConfig.style.display = 'block';
+        timeField.style.display = 'block';
+        timeInput.setAttribute('required', 'required');
+      } else if (this.value === 'none') {
+        weeklyConfig.style.display = 'none';
+        monthlyConfig.style.display = 'none';
+        timeField.style.display = 'none';
+        timeInput.removeAttribute('required');
       } else {
         weeklyConfig.style.display = 'none';
         monthlyConfig.style.display = 'none';
+        timeField.style.display = 'none';
+        timeInput.removeAttribute('required');
       }
     });
   }

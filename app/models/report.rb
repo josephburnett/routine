@@ -14,9 +14,9 @@ class Report < ApplicationRecord
   has_many :metrics, through: :report_metrics
 
   validates :name, presence: true
-  validates :time_of_day, presence: true
-  validates :interval_type, presence: true, inclusion: { in: %w[weekly monthly] }
-  validates :interval_config, presence: true
+  validates :time_of_day, presence: true, unless: -> { interval_type == "none" }
+  validates :interval_type, presence: true, inclusion: { in: %w[weekly monthly none] }
+  validates :interval_config, presence: true, unless: -> { interval_type == "none" }
 
   validate :validate_interval_config
 
@@ -28,7 +28,7 @@ class Report < ApplicationRecord
 
   # Class method to send all due reports
   def self.send_due_reports!
-    Report.not_deleted.find_each do |report|
+    Report.not_deleted.where.not(interval_type: "none").find_each do |report|
       if report.should_send_now?
         begin
           ReportMailer.scheduled_report(report).deliver_now
@@ -43,6 +43,7 @@ class Report < ApplicationRecord
 
   # Check if this report should be sent now
   def should_send_now?
+    return false if interval_type == "none"
     return false unless next_send_time_passed?
     return false unless has_content_to_send?
     true
@@ -61,6 +62,7 @@ class Report < ApplicationRecord
 
   # Get next scheduled send time
   def next_send_time
+    return nil if interval_type == "none"
     return nil unless time_of_day && interval_type && interval_config
 
     base_time = Time.current.beginning_of_day + time_of_day.seconds_since_midnight.seconds
@@ -138,6 +140,10 @@ class Report < ApplicationRecord
 
   def validate_interval_config
     return unless interval_type
+    if interval_type == "none"
+      # For 'none' interval type, interval_config is not required
+      return
+    end
 
     if interval_config.blank?
       errors.add(:interval_config, "cannot be blank")

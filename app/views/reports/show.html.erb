@@ -6,7 +6,11 @@
   <div style="text-align: center; margin-bottom: 2rem;">
     <h1 style="margin: 0; font-size: 1.5rem;"><%= @report.name || "Report ##{@report.id}" %></h1>
     <p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.9rem;">
-      <%= @report.interval_type.capitalize %> at <%= @report.time_of_day&.strftime("%H:%M") || "Not set" %>
+      <% if @report.interval_type == 'none' %>
+        View-only report (no email schedule)
+      <% else %>
+        <%= @report.interval_type.capitalize %> at <%= @report.time_of_day&.strftime("%H:%M") || "Not set" %>
+      <% end %>
     </p>
   </div>
 
@@ -64,6 +68,26 @@
           <!-- Column 4: Alert Name -->
           <div style="flex: 2; margin-left: 0.75rem;">
             <%= link_to alert.display_name, alert_path(alert, namespace: alert.namespace), style: "text-decoration: none; color: #{bar_color}; font-weight: bold;" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <!-- Alert Messages Section (for activated alerts only) -->
+  <% activated_alerts = @report.alerts.select(&:activated?) %>
+  <% activated_alerts_with_messages = activated_alerts.select { |alert| alert.message.present? } %>
+  <% if activated_alerts_with_messages.any? %>
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Alert Messages</h3>
+      
+      <% activated_alerts_with_messages.each do |alert| %>
+        <div style="margin-bottom: 1rem; padding: 0.75rem; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+          <div style="font-weight: bold; margin-bottom: 0.5rem; color: #856404;">
+            <%= alert.display_name %>
+          </div>
+          <div style="color: #856404;">
+            <%= simple_format(alert.message) %>
           </div>
         </div>
       <% end %>
