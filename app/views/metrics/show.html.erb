@@ -68,15 +68,8 @@
     <h2>Time Series Data</h2>
     
     <% if @series_data.any? %>
-      <div class="chart-container" style="margin-bottom: 2rem;"
-           data-controller="metric-chart"
-           data-metric-chart-data-value="<%= html_escape(@series_data.to_json) %>"
-           data-metric-chart-metric-value="<%= html_escape({
-             type: @metric.type.capitalize,
-             function: @metric.function.capitalize,
-             wrap: @metric.wrap
-           }.to_json) %>">
-        <canvas data-metric-chart-target="canvas" width="400" height="200"></canvas>
+      <div class="chart-container" style="margin-bottom: 2rem; text-align: center;">
+        <%= render_metric_chart(@series_data, @metric) %>
       </div>
       
       <h3>Raw Data</h3>
