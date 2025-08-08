@@ -68,8 +68,15 @@
     <h2>Time Series Data</h2>
     
     <% if @series_data.any? %>
-      <div class="chart-container" style="margin-bottom: 2rem;">
-        <canvas id="metricChart" width="400" height="200"></canvas>
+      <div class="chart-container" style="margin-bottom: 2rem;"
+           data-controller="metric-chart"
+           data-metric-chart-data-value="<%= html_escape(@series_data.to_json) %>"
+           data-metric-chart-metric-value="<%= html_escape({
+             type: @metric.type.capitalize,
+             function: @metric.function.capitalize,
+             wrap: @metric.wrap
+           }.to_json) %>">
+        <canvas data-metric-chart-target="canvas" width="400" height="200"></canvas>
       </div>
       
       <h3>Raw Data</h3>
@@ -105,175 +112,3 @@
     <% end %>
   </div>
 </div>
-
-<% if @series_data.any? %>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-  document.addEventListener('turbo:load', function() {
-    // Ensure the chart element exists before trying to use it
-    const chartElement = document.getElementById('metricChart');
-    if (!chartElement) return;
-    
-    const ctx = chartElement.getContext('2d');
-  
-  <% if @metric.wrap.present? && @metric.wrap != 'none' %>
-    // For wrapped metrics, use time scale with proper formatting
-    <% if @metric.wrap == 'day' %>
-      // For day wrap, create data points with time-based x values
-      const chartData = <%= raw @series_data.map { |time, value| 
-        # Convert to minutes since midnight for proper x-axis positioning
-        minutes_since_midnight = time.hour * 60 + time.min
-        { x: minutes_since_midnight, y: value.round(2) }
-      }.to_json %>;
-      
-      const chart = new Chart(ctx, {
-        type: 'scatter',
-        data: {
-          datasets: [{
-            label: <%= raw "#{@metric.type.capitalize} Value".to_json %>,
-            data: chartData,
-            backgroundColor: 'rgba(75, 192, 192, 0.6)',
-            borderColor: 'rgb(75, 192, 192)',
-            pointRadius: 3,
-            showLine: false
-          }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            x: {
-              type: 'linear',
-              min: 0,
-              max: 1440, // 24 * 60 minutes
-              title: {
-                display: true,
-                text: 'Time of Day'
-              },
-              ticks: {
-                stepSize: 60, // Show hour marks
-                callback: function(value) {
-                  const hours = Math.floor(value / 60);
-                  return hours.toString().padStart(2, '0') + ':00';
-                }
-              }
-            },
-            y: {
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: 'Value'
-              }
-            }
-          },
-          plugins: {
-            title: {
-              display: true,
-              text: <%= raw "Metric: #{@metric.function.capitalize} Function (Wrapped by #{@metric.wrap})".to_json %>
-            }
-          }
-        }
-      });
-    <% else %>
-      // For other wrap types, use category scale
-      const chartData = <%= raw @series_data.map { |time, value| 
-        formatted_time = case @metric.wrap
-                        when 'hour'
-                          time.strftime("%M")
-                        when 'weekly'
-                          time.strftime("%w-%H:%M")
-                        else
-                          time.strftime("%H:%M")
-                        end
-        { x: formatted_time, y: value.round(2) }
-      }.to_json %>;
-      
-      const chart = new Chart(ctx, {
-        type: 'scatter',
-        data: {
-          datasets: [{
-            label: <%= raw "#{@metric.type.capitalize} Value".to_json %>,
-            data: chartData,
-            backgroundColor: 'rgba(75, 192, 192, 0.6)',
-            borderColor: 'rgb(75, 192, 192)',
-            pointRadius: 3,
-            showLine: false
-          }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            x: {
-              type: 'category',
-              title: {
-                display: true,
-                text: <%= raw case @metric.wrap
-                             when 'hour'
-                               'Minutes (0-59)'
-                             when 'weekly'
-                               'Day-Time (0=Sun, 6=Sat)'
-                             else
-                               'Time'
-                             end.to_json %>
-              }
-            },
-            y: {
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: 'Value'
-              }
-            }
-          },
-          plugins: {
-            title: {
-              display: true,
-              text: <%= raw "Metric: #{@metric.function.capitalize} Function (Wrapped by #{@metric.wrap})".to_json %>
-            }
-          }
-        }
-      });
-    <% end %>
-  <% else %>
-    // For non-wrapped metrics, use regular time formatting
-    const chart = new Chart(ctx, {
-      type: 'scatter',
-      data: {
-        datasets: [{
-          label: <%= raw "#{@metric.type.capitalize} Value".to_json %>,
-          data: <%= raw @series_data.map { |time, value| { x: time.strftime("%m/%d %H:%M"), y: value.round(2) } }.to_json %>,
-          backgroundColor: 'rgba(75, 192, 192, 0.6)',
-          borderColor: 'rgb(75, 192, 192)',
-          pointRadius: 4,
-          showLine: false
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: {
-            type: 'category',
-            title: {
-              display: true,
-              text: 'Time'
-            }
-          },
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: 'Value'
-            }
-          }
-        },
-        plugins: {
-          title: {
-            display: true,
-            text: <%= raw "Metric: #{@metric.function.capitalize} Function".to_json %>
-          }
-        }
-      }
-    });
-  <% end %>
-  }); // End turbo:load event listener
-</script>
-<% end %>
