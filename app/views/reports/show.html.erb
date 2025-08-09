@@ -26,7 +26,9 @@
           exceeding_count = progress_info[:exceeding_count]
           delay = alert.delay
           
-          if progress_percent >= 100
+          if alert.disabled?
+            bar_color = "#999" # grey for disabled alerts
+          elsif progress_percent >= 100
             bar_color = "#dc3545" # red
           elsif delay > 1 && exceeding_count == (delay - 1)
             # Special case: 1 day away from activation (but not for delay=1 alerts)
