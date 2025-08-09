@@ -10,7 +10,7 @@ class Alert < ApplicationRecord
 
   validates :name, presence: true
   validates :threshold, presence: true, numericality: true
-  validates :direction, presence: true, inclusion: { in: %w[above below] }
+  validates :direction, presence: true, inclusion: { in: %w[above below at_or_above at_or_below] }
   validates :delay, presence: true, numericality: { greater_than: 0, only_integer: true }
 
   scope :not_deleted, -> { where(deleted: false) }
@@ -59,6 +59,14 @@ class Alert < ApplicationRecord
       # For activation: all values must be below threshold
       # For deactivation: any value above or equal to threshold deactivates
       recent_values.all? { |value| value < threshold }
+    when "at_or_above"
+      # For activation: all values must be at or above threshold
+      # For deactivation: any value below threshold deactivates
+      recent_values.all? { |value| value >= threshold }
+    when "at_or_below"
+      # For activation: all values must be at or below threshold
+      # For deactivation: any value above threshold deactivates
+      recent_values.all? { |value| value <= threshold }
     else
       false
     end
@@ -82,6 +90,10 @@ class Alert < ApplicationRecord
       recent_values.count { |value| value > threshold }
     when "below"
       recent_values.count { |value| value < threshold }
+    when "at_or_above"
+      recent_values.count { |value| value >= threshold }
+    when "at_or_below"
+      recent_values.count { |value| value <= threshold }
     else
       0
     end
@@ -95,6 +107,10 @@ class Alert < ApplicationRecord
         value > threshold
       when "below"
         value < threshold
+      when "at_or_above"
+        value >= threshold
+      when "at_or_below"
+        value <= threshold
       else
         false
       end

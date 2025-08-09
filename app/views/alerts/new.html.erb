@@ -37,8 +37,8 @@
 
       <div class="field">
         <%= form.label :direction %>
-        <%= form.select :direction, [['Above', 'above'], ['Below', 'below']], { prompt: 'Select direction' }, { required: true } %>
-        <small class="form-text text-muted">Alert activates when metric value is above or below the threshold.</small>
+        <%= form.select :direction, [['Above', 'above'], ['Below', 'below'], ['At or Above', 'at_or_above'], ['At or Below', 'at_or_below']], { prompt: 'Select direction' }, { required: true } %>
+        <small class="form-text text-muted">Alert activates when metric value is above, below, at or above, or at or below the threshold.</small>
       </div>
 
       <div class="field">
