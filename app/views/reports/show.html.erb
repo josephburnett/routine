@@ -55,8 +55,9 @@
           <div style="flex: 1; margin: 0 0.75rem; position: relative;">
             <div style="height: 8px; background-color: #e9ecef; border-radius: 4px; overflow: hidden;">
               <% 
-                # For 0% progress, show full green bar. Otherwise show actual progress.
-                display_width = progress_percent == 0 ? 100 : progress_percent
+                # Bar shrinks from right to left as activation approaches
+                # 0% = full bar, 100% = small dot on left
+                display_width = progress_percent >= 100 ? 5 : (100 - progress_percent)
               %>
               <div style="height: 100%; background-color: <%= bar_color %>; width: <%= display_width %>%; transition: all 0.3s ease;"></div>
             </div>
