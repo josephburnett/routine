@@ -178,10 +178,10 @@ class MetricFunctionTest < ActiveSupport::TestCase
     create_answer(question: @question_temperature, value: 20, time: @fixed_time.beginning_of_day + 12.hours)  # 12:00
     create_answer(question: @question_temperature, value: 30, time: @fixed_time)                       # 14:30
 
-    # Source metric should materialize as single daily bucket: (10+20+30)/3 = 20
+    # Source metric should materialize as single daily bucket: 10+20+30 = 60 (sum function)
     source_series = source_metric.series
     assert_equal 1, source_series.length
-    assert_equal 20.0, source_series.first.last
+    assert_equal 60.0, source_series.first.last
 
     # Create target metric with hour resolution that references the source metric
     target_metric = create_metric(function: "sum", width: "daily", resolution: "hour", name: "Hourly Target")
@@ -196,7 +196,7 @@ class MetricFunctionTest < ActiveSupport::TestCase
     # The rebucketed values should be derived from the source daily value
     first_bucket = target_series.first
     assert_not_nil first_bucket, "Should have a rebucketed bucket"
-    assert_equal 20.0, first_bucket.last, "Rebucketed value should match source daily value"
+    assert_equal 60.0, first_bucket.last, "Rebucketed value should match source daily value"
   end
 
   # =============================================================================
@@ -363,15 +363,15 @@ class MetricFunctionTest < ActiveSupport::TestCase
     source_metric = create_metric(function: "sum", width: "daily", resolution: "day", name: "Daily Source")
     MetricQuestion.create!(metric: source_metric, question: @question_temperature)
 
-    # Create daily data (answers throughout the day get averaged into single daily bucket)
+    # Create daily data (answers throughout the day get summed into single daily bucket)
     create_answer(question: @question_temperature, value: 10, time: @fixed_time.beginning_of_day)
     create_answer(question: @question_temperature, value: 20, time: @fixed_time.beginning_of_day + 12.hours)
     create_answer(question: @question_temperature, value: 30, time: @fixed_time)
 
-    # Source should have 1 daily bucket with average: (10+20+30)/3 = 20
+    # Source should have 1 daily bucket with sum: 10+20+30 = 60 (sum function)
     source_series = source_metric.series
     assert_equal 1, source_series.length
-    assert_equal 20.0, source_series.first.last
+    assert_equal 60.0, source_series.first.last
 
     # Create target metric with hour resolution
     target_metric = create_metric(function: "sum", width: "daily", resolution: "hour", name: "Hourly Target")
@@ -388,7 +388,7 @@ class MetricFunctionTest < ActiveSupport::TestCase
     # For now, let's just verify that the rebucketing worked
     first_bucket = target_series.first
     assert_not_nil first_bucket, "Should have at least one bucket"
-    assert_equal 20.0, first_bucket.last, "Rebucketed value should be the daily value"
+    assert_equal 60.0, first_bucket.last, "Rebucketed value should be the daily value"
   end
 
   # =============================================================================

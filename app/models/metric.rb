@@ -272,8 +272,17 @@ class Metric < ApplicationRecord
       grouped_wrapped = wrapped_data.group_by(&:first)
       grouped_wrapped.map do |wrapped_time, time_value_pairs|
         values = time_value_pairs.map(&:last)
-        averaged_value = values.sum.to_f / values.size
-        [ wrapped_time, averaged_value ]
+        aggregated_value = case function
+        when "sum", "answer", "count"
+          values.sum
+        when "average"
+          values.sum.to_f / values.size
+        when "difference"
+          values.first - values[1..-1].sum
+        else
+          values.sum.to_f / values.size  # fallback
+        end
+        [ wrapped_time, aggregated_value ]
       end.sort_by(&:first)
     else
       # Normal bucketing logic for single question
@@ -285,7 +294,16 @@ class Metric < ApplicationRecord
         if grouped_answers.has_key?(bucket_time)
           group_answers = grouped_answers[bucket_time]
           values = group_answers.map { |answer| numeric_value(answer) }
-          value = values.sum.to_f / values.size
+          value = case function
+          when "sum", "answer", "count"
+            values.sum
+          when "average"
+            values.sum.to_f / values.size
+          when "difference"
+            values.first - values[1..-1].sum
+          else
+            values.sum.to_f / values.size  # fallback
+          end
           scaled_value = value * (scale || 1.0)
           [ bucket_time, scaled_value ]
         else
@@ -393,12 +411,21 @@ class Metric < ApplicationRecord
         [ wrapped_timestamp, scaled_value ]
       end
 
-      # Group by wrapped timestamp and average overlapping values
+      # Group by wrapped timestamp and aggregate overlapping values based on function
       grouped_wrapped = wrapped_data.group_by(&:first)
       grouped_wrapped.map do |wrapped_time, time_value_pairs|
         values = time_value_pairs.map(&:last)
-        averaged_value = values.sum.to_f / values.size
-        [ wrapped_time, averaged_value ]
+        aggregated_value = case function
+        when "sum", "answer", "count"
+          values.sum
+        when "average"
+          values.sum.to_f / values.size
+        when "difference"
+          values.first - values[1..-1].sum
+        else
+          values.sum.to_f / values.size  # fallback
+        end
+        [ wrapped_time, aggregated_value ]
       end.sort_by(&:first)
     else
       # Use bucketing for non-wrapped data
@@ -410,10 +437,19 @@ class Metric < ApplicationRecord
       # Generate raw series data with actual values
       raw_series = all_buckets.map do |bucket_time|
         if grouped_answers.has_key?(bucket_time)
-          # Bucket has data - calculate average
+          # Bucket has data - calculate based on function
           group_answers = grouped_answers[bucket_time]
           values = group_answers.map { |answer| numeric_value(answer) }
-          value = values.sum.to_f / values.size
+          value = case function
+          when "sum", "answer", "count"
+            values.sum
+          when "average"
+            values.sum.to_f / values.size
+          when "difference"
+            values.first - values[1..-1].sum
+          else
+            values.sum.to_f / values.size  # fallback
+          end
 
           # Apply scale factor for answer metrics
           scaled_value = value * (scale || 1.0)

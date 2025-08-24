@@ -37,7 +37,7 @@ class MetricTest < ActiveSupport::TestCase
   # =============================================================================
 
   test "daily width should return data since midnight today" do
-    metric = create_metric(width: "daily", resolution: "hour")
+    metric = create_metric(width: "daily", resolution: "hour", function: "average")
 
     # Create answers at different times
     create_answer(value: 10, time: @fixed_time - 2.days)        # Should be excluded (before today)
@@ -183,7 +183,7 @@ class MetricTest < ActiveSupport::TestCase
   # =============================================================================
 
   test "five_minute resolution buckets data into 5-minute intervals" do
-    metric = create_metric(width: "daily", resolution: "five_minute")
+    metric = create_metric(width: "daily", resolution: "five_minute", function: "average")
 
     # Create answers within the same 5-minute bucket (14:25 - 14:29:59)
     base_time = @fixed_time.beginning_of_hour + 25.minutes  # 14:25:00
@@ -212,7 +212,7 @@ class MetricTest < ActiveSupport::TestCase
   end
 
   test "hour resolution buckets data into hourly intervals" do
-    metric = create_metric(width: "daily", resolution: "hour")
+    metric = create_metric(width: "daily", resolution: "hour", function: "average")
 
     # Create answers within the same hour (14:00 - 14:59:59)
     hour_start = @fixed_time.beginning_of_hour  # 14:00:00
@@ -239,7 +239,7 @@ class MetricTest < ActiveSupport::TestCase
   end
 
   test "day resolution buckets data into daily intervals" do
-    metric = create_metric(width: "weekly", resolution: "day")
+    metric = create_metric(width: "weekly", resolution: "day", function: "average")
 
     # Create answers within the same day
     day_start = @fixed_time.beginning_of_day
@@ -263,7 +263,7 @@ class MetricTest < ActiveSupport::TestCase
   end
 
   test "week resolution buckets data into weekly intervals" do
-    metric = create_metric(width: "monthly", resolution: "week")
+    metric = create_metric(width: "monthly", resolution: "week", function: "average")
 
     # Create answers within the same week (using default Monday start)
     week_start = @fixed_time.beginning_of_week
@@ -287,7 +287,7 @@ class MetricTest < ActiveSupport::TestCase
   end
 
   test "month resolution buckets data into monthly intervals" do
-    metric = create_metric(width: "yearly", resolution: "month")
+    metric = create_metric(width: "yearly", resolution: "month", function: "average")
 
     # Create answers within the same month
     month_start = @fixed_time.beginning_of_month
@@ -315,7 +315,7 @@ class MetricTest < ActiveSupport::TestCase
   # =============================================================================
 
   test "no data maintains previous value - buckets with no answers preserve last known value" do
-    metric = create_metric(width: "daily", resolution: "hour")
+    metric = create_metric(width: "daily", resolution: "hour", function: "average")
     metric.update!(fill: "previous")
 
     # Create answers with gaps
@@ -341,14 +341,36 @@ class MetricTest < ActiveSupport::TestCase
     assert_equal 200, hour_03.last, "Hour 03 should maintain previous value 200"
   end
 
-  test "multiple answers in same bucket are averaged" do
-    metric = create_metric(width: "daily", resolution: "hour")
+  test "sum function sums multiple answers in same bucket" do
+    metric = create_metric(width: "daily", resolution: "hour", function: "sum")
 
     # Create multiple answers in the same hour bucket
     hour_start = @fixed_time.beginning_of_hour
     create_answer(value: 10, time: hour_start)
     create_answer(value: 20, time: hour_start + 15.minutes)
-    create_answer(value: 30, time: hour_start + 25.minutes)  # Changed from 45 to 25 minutes
+    create_answer(value: 30, time: hour_start + 25.minutes)
+
+    series = metric.series
+
+    # Should have one bucket with summed value
+    bucket = series.find { |time, value| time == hour_start }
+    assert_not_nil bucket, "Should have bucket for the hour"
+
+    # Test that multiple answers are summed
+    expected_sum = 10.0 + 20.0 + 30.0
+    actual_value = bucket.last
+
+    assert_equal expected_sum, actual_value, "Multiple answers in same bucket should be summed for sum function"
+  end
+
+  test "average function averages multiple answers in same bucket" do
+    metric = create_metric(width: "daily", resolution: "hour", function: "average")
+
+    # Create multiple answers in the same hour bucket
+    hour_start = @fixed_time.beginning_of_hour
+    create_answer(value: 10, time: hour_start)
+    create_answer(value: 20, time: hour_start + 15.minutes)
+    create_answer(value: 30, time: hour_start + 25.minutes)
 
     series = metric.series
 
@@ -356,13 +378,65 @@ class MetricTest < ActiveSupport::TestCase
     bucket = series.find { |time, value| time == hour_start }
     assert_not_nil bucket, "Should have bucket for the hour"
 
-    # Current implementation sums (10+20+30=60), but spec says should average (20)
-    # This test documents the expected behavior vs current implementation
+    # Test that multiple answers are averaged
     expected_average = (10.0 + 20.0 + 30.0) / 3.0
     actual_value = bucket.last
 
-    # Test that multiple answers are averaged, not summed
-    assert_equal expected_average, actual_value, "Multiple answers in same bucket should be averaged"
+    assert_equal expected_average, actual_value, "Multiple answers in same bucket should be averaged for average function"
+  end
+
+  test "difference function subtracts later values from first in same bucket" do
+    metric = create_metric(width: "daily", resolution: "hour", function: "difference")
+
+    # Create multiple answers in the same hour bucket
+    hour_start = @fixed_time.beginning_of_hour
+    create_answer(value: 50, time: hour_start)
+    create_answer(value: 10, time: hour_start + 15.minutes)
+    create_answer(value: 5, time: hour_start + 25.minutes)
+
+    series = metric.series
+
+    # Should have one bucket with difference value
+    bucket = series.find { |time, value| time == hour_start }
+    assert_not_nil bucket, "Should have bucket for the hour"
+
+    # Test that multiple answers are processed as: first - (sum of rest)
+    expected_difference = 50.0 - (10.0 + 5.0)
+    actual_value = bucket.last
+
+    assert_equal expected_difference, actual_value, "Multiple answers in same bucket should follow difference logic for difference function"
+  end
+
+  test "weekly sum metric correctly sums daily exercise minutes" do
+    # This tests the exact scenario from production: Exercise Minutes metric
+    # with function: sum, resolution: week, width: 90_days
+    weekly_metric = create_metric(width: "90_days", resolution: "week", function: "sum")
+
+    # Create daily exercise data within the same week
+    # Use times that are definitely all in the same week
+    base_time = @fixed_time.beginning_of_week  # Monday 00:00
+
+    # Create 4 exercise entries on different days within the same week
+    create_answer(value: 30, time: base_time + 0.days)  # Monday
+    create_answer(value: 20, time: base_time + 1.day)   # Tuesday
+    create_answer(value: 15, time: base_time + 2.days)  # Wednesday
+    create_answer(value: 45, time: base_time + 4.days)  # Friday
+
+    series = weekly_metric.series
+
+    # Should have one weekly bucket that sums all daily values
+    week_bucket = series.find { |time, value| time == base_time }
+    assert_not_nil week_bucket, "Should have bucket for the week"
+
+    # Total should be sum of all daily values: 30+20+15+45 = 110
+    expected_weekly_total = 30.0 + 20.0 + 15.0 + 45.0
+    actual_value = week_bucket.last
+
+    assert_equal expected_weekly_total, actual_value, "Weekly sum should add up all daily exercise minutes, not average them"
+
+    # Also verify it's not accidentally averaging (which would be 110/4 = 27.5)
+    incorrect_average = expected_weekly_total / 4.0
+    assert_not_equal incorrect_average, actual_value, "Weekly sum should NOT be averaging the daily values"
   end
 
   # =============================================================================
@@ -370,7 +444,7 @@ class MetricTest < ActiveSupport::TestCase
   # =============================================================================
 
   test "wrap feature overlaps data within selected window and then averages" do
-    metric = create_metric(width: "weekly", resolution: "hour", wrap: "day")
+    metric = create_metric(width: "weekly", resolution: "hour", wrap: "day", function: "average")
 
     # Create answers across multiple days at the same hour
     day1 = @fixed_time.beginning_of_week(:saturday)
@@ -404,7 +478,7 @@ class MetricTest < ActiveSupport::TestCase
   end
 
   test "wrap by hour maps data to positions within reference hour" do
-    metric = create_metric(width: "daily", resolution: "five_minute", wrap: "hour")
+    metric = create_metric(width: "daily", resolution: "five_minute", wrap: "hour", function: "average")
 
     # Create answers at same minute within different hours
     base_time = @fixed_time.beginning_of_day
@@ -423,7 +497,7 @@ class MetricTest < ActiveSupport::TestCase
   end
 
   test "wrap by weekly maps data to positions within reference week" do
-    metric = create_metric(width: "monthly", resolution: "day", wrap: "weekly")
+    metric = create_metric(width: "monthly", resolution: "day", wrap: "weekly", function: "average")
 
     # Create answers on the same day of week (Tuesday) across different weeks within the month
     # Current time is June 27, 2025 (Friday), so use recent Tuesdays
@@ -454,7 +528,7 @@ class MetricTest < ActiveSupport::TestCase
   # =============================================================================
 
   test "empty data returns empty series" do
-    metric = create_metric(width: "daily", resolution: "hour")
+    metric = create_metric(width: "daily", resolution: "hour", function: "average")
     # Don't create any answers
 
     series = metric.series
@@ -462,7 +536,7 @@ class MetricTest < ActiveSupport::TestCase
   end
 
   test "single data point returns single bucket" do
-    metric = create_metric(width: "daily", resolution: "hour")
+    metric = create_metric(width: "daily", resolution: "hour", function: "average")
     create_answer(value: 42, time: @fixed_time)
 
     series = metric.series
@@ -471,7 +545,7 @@ class MetricTest < ActiveSupport::TestCase
   end
 
   test "data exactly at boundary times is included correctly" do
-    metric = create_metric(width: "daily", resolution: "hour")
+    metric = create_metric(width: "daily", resolution: "hour", function: "average")
 
     # Create answer exactly at start of day
     day_start = @fixed_time.beginning_of_day
@@ -493,7 +567,7 @@ class MetricTest < ActiveSupport::TestCase
 
 
   test "different answer types are converted to numeric correctly" do
-    metric = create_metric(width: "daily", resolution: "hour")
+    metric = create_metric(width: "daily", resolution: "hour", function: "average")
 
     # Create answers of different types (all within time range)
     create_answer(value: 42, time: @fixed_time, answer_type: "number")
@@ -589,12 +663,12 @@ class MetricTest < ActiveSupport::TestCase
 
   private
 
-  def create_metric(width:, resolution:, scale: nil, wrap: "none")
+  def create_metric(width:, resolution:, scale: nil, wrap: "none", function: "answer")
     Metric.create!(
       user: @user,
       width: width,
       resolution: resolution,
-      function: "answer",
+      function: function,
       scale: scale,
       wrap: wrap,
       name: "Test Metric"
