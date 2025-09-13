@@ -1,0 +1,177 @@
+<!-- Alerts Section -->
+<% if @report.alerts.any? %>
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Alerts (<%= @report.alerts.count %>)</h3>
+    
+    <% @report.alerts.each do |alert| %>
+      <% progress_info = alert.activation_progress %>
+      <% progress_percent = (progress_info[:progress] * 100).round %>
+      <% 
+        exceeding_count = progress_info[:exceeding_count]
+        delay = alert.delay
+        
+        if alert.disabled?
+          bar_color = "#999" # grey for disabled alerts
+        elsif progress_percent >= 100
+          bar_color = "#dc3545" # red
+        elsif delay > 1 && exceeding_count == (delay - 1)
+          # Special case: 1 day away from activation (but not for delay=1 alerts)
+          bar_color = "#ffc107" # yellow
+        elsif progress_percent >= 75
+          bar_color = "#ffc107" # yellow
+        else
+          bar_color = "#28a745" # green
+        end
+      %>
+      
+      <div style="display: flex; align-items: center; margin-bottom: 0.75rem; font-size: 0.9rem;">
+        <!-- Column 1: Latest Value -->
+        <div style="width: 60px; text-align: center; font-weight: bold;">
+          <% 
+            # Get the latest value from the metric's series data
+            series_data = alert.metric.series
+            latest_value = series_data.any? ? series_data.last[1] : nil
+          %>
+          <%= latest_value ? latest_value.round(2) : "N/A" %>
+        </div>
+        
+        <!-- Column 2: Progress Bar -->
+        <div style="flex: 1; margin: 0 0.75rem; position: relative;">
+          <div style="height: 8px; background-color: #e9ecef; border-radius: 4px; overflow: hidden;">
+            <% 
+              # Bar shrinks from right to left as activation approaches
+              # 0% = full bar, 100% = small dot on left
+              display_width = progress_percent >= 100 ? 5 : (100 - progress_percent)
+            %>
+            <div style="height: 100%; background-color: <%= bar_color %>; width: <%= display_width %>%; transition: all 0.3s ease;"></div>
+          </div>
+        </div>
+        
+        <!-- Column 3: Threshold and Delay Combined -->
+        <div style="width: 80px; text-align: center; color: #666; font-size: 0.8rem;">
+          <%= alert.direction == "above" ? "↑" : "↓" %><%= alert.threshold %> / <%= alert.delay %>d
+        </div>
+        
+        <!-- Column 4: Alert Name -->
+        <div style="flex: 2; margin-left: 0.75rem;">
+          <% if local_assigns[:email_mode] %>
+            <a href="<%= alert_url(alert) %>" style="text-decoration: none; color: <%= bar_color %>; font-weight: bold;">
+              <%= alert.display_name %>
+            </a>
+          <% else %>
+            <%= link_to alert.display_name, alert_path(alert, namespace: alert.namespace), style: "text-decoration: none; color: #{bar_color}; font-weight: bold;" %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<!-- Alert Messages Section (for activated alerts only) -->
+<% activated_alerts = @report.alerts.select(&:activated?) %>
+<% activated_alerts_with_messages = activated_alerts.select { |alert| alert.message.present? } %>
+<% if activated_alerts_with_messages.any? %>
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Alert Messages</h3>
+    
+    <% activated_alerts_with_messages.each do |alert| %>
+      <div style="margin-bottom: 1rem; padding: 0.75rem; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+        <div style="font-weight: bold; margin-bottom: 0.5rem; color: #856404;">
+          <%= alert.display_name %>
+        </div>
+        <div style="color: #856404;">
+          <%= simple_format(alert.message) %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<!-- Metrics Section -->
+<% if @report.metrics.any? %>
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Metrics (<%= @report.metrics.count %>)</h3>
+    
+    <!-- 2-column grid layout -->
+    <div class="metrics-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <% @report.metrics.each do |metric| %>
+        <% series_data = metric.series %>
+        <div style="border: 1px solid #eee; border-radius: 6px; padding: 0.75rem;">
+          <!-- Metric name and latest value -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h4 style="margin: 0; font-size: 0.9rem;">
+              <% if local_assigns[:email_mode] %>
+                <a href="<%= metric_url(metric) %>" style="text-decoration: none; color: inherit;"><%= metric.display_name %></a>
+              <% else %>
+                <%= link_to metric.display_name, metric_path(metric, namespace: metric.namespace), style: "text-decoration: none; color: inherit;" %>
+              <% end %>
+            </h4>
+            <% if series_data.any? %>
+              <span style="font-weight: bold; font-size: 0.9rem;"><%= series_data.last[1]&.round(2) %></span>
+            <% else %>
+              <span style="color: #999; font-size: 0.9rem;">N/A</span>
+            <% end %>
+          </div>
+          
+          <!-- Compact line graph -->
+          <div style="margin-top: 0.5rem;">
+            <% if series_data.any? %>
+              <%
+                # Prepare data for SVG
+                values = series_data.map { |time, value| value || 0 }
+                next if values.empty?
+                
+                # Graph dimensions (smaller for 2-column layout)
+                width = 160
+                height = 35
+                padding = 3
+                
+                # Calculate scale
+                min_val = values.min
+                max_val = values.max
+                val_range = max_val - min_val
+                val_range = 1 if val_range == 0  # Avoid division by zero
+                
+                # Generate points for polyline
+                points = values.each_with_index.map do |val, i|
+                  x = padding + (i.to_f / (values.length - 1)) * (width - 2 * padding)
+                  y = height - padding - ((val - min_val).to_f / val_range) * (height - 2 * padding)
+                  "#{x.round(1)},#{y.round(1)}"
+                end.join(" ")
+              %>
+              <svg width="<%= width %>" height="<%= height %>" style="border: 1px solid #e0e0e0; background: #f9f9f9;">
+                <polyline points="<%= points %>" 
+                         fill="none" 
+                         stroke="#007bff" 
+                         stroke-width="1.5" 
+                         stroke-linecap="round" 
+                         stroke-linejoin="round"/>
+                <!-- Data points as small circles -->
+                <% values.each_with_index do |val, i| %>
+                  <% 
+                    x = padding + (i.to_f / (values.length - 1)) * (width - 2 * padding)
+                    y = height - padding - ((val - min_val).to_f / val_range) * (height - 2 * padding)
+                  %>
+                  <circle cx="<%= x.round(1) %>" cy="<%= y.round(1) %>" r="1.5" fill="#007bff"/>
+                <% end %>
+              </svg>
+            <% else %>
+              <div style="font-size: 0.8rem; color: #999; font-style: italic;">No data available</div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<!-- No Content Message -->
+<% if @report.alerts.empty? && @report.metrics.empty? %>
+  <div class="card" style="text-align: center; padding: 2rem; margin-bottom: 1.5rem;">
+    <h3 style="color: #666; margin-bottom: 1rem;">No Content Configured</h3>
+    <p style="color: #999; margin-bottom: 1.5rem;">Add alerts or metrics to make this report useful.</p>
+    <% unless local_assigns[:email_mode] %>
+      <%= link_to "Edit Report", edit_report_path(@report), class: "btn btn-primary" %>
+    <% end %>
+  </div>
+<% end %>
