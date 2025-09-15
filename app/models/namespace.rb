@@ -13,6 +13,19 @@ class Namespace
       namespaces.merge(model.namespaces_for_user(user))
     end
 
+    # Add intermediate namespaces (parent folders that don't have direct entities)
+    # For example, if we have "house.irrigation", we also need "house" to be navigable
+    intermediate_namespaces = Set.new
+    namespaces.each do |namespace|
+      parts = namespace.split(".")
+      # Add all parent paths
+      (1...parts.length).each do |i|
+        parent_namespace = parts[0...i].join(".")
+        intermediate_namespaces.add(parent_namespace)
+      end
+    end
+    namespaces.merge(intermediate_namespaces)
+
     # Convert to Namespace objects
     namespaces.map { |name| new(name: name, user_id: user.id) }
   end

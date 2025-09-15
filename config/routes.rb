@@ -60,7 +60,7 @@ Rails.application.routes.draw do
   end
 
 
-  resources :namespaces, only: [ :index, :show ] do
+  resources :namespaces, only: [ :index, :show ], constraints: { id: /[^\/]+/ } do
     member do
       post :show  # Allow POST to show action for bulk move
     end
