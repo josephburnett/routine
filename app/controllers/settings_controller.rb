@@ -49,6 +49,6 @@ class SettingsController < ApplicationController
   private
 
   def user_setting_params
-    params.require(:user_setting).permit(:backup_enabled, :backup_method, :backup_email)
+    params.require(:user_setting).permit(:backup_enabled, :backup_method, :backup_email, :backup_frequency)
   end
 end

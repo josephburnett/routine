@@ -19,7 +19,7 @@
     <div class="card">
       <h2>Backup Settings</h2>
       <p style="color: #666; margin-bottom: 1.5rem;">
-        Configure automated backups of your personal data. Backups are encrypted and sent to your specified email address daily at 3:00 AM.
+        Configure automated backups of your personal data. Backups are encrypted and sent to your specified email address.
       </p>
 
       <div class="field">
@@ -28,11 +28,25 @@
           Enable automated backups
         <% end %>
         <small style="display: block; color: #666; margin-top: 0.25rem;">
-          When enabled, your data will be backed up daily and sent to your email
+          When enabled, your data will be backed up according to the frequency below
         </small>
       </div>
 
       <div id="backup-options" style="<%= 'display: none;' unless @user_setting.backup_enabled? %>">
+        <div class="field">
+          <%= form.label :backup_frequency, "Backup Frequency" %>
+          <%= form.select :backup_frequency,
+              options_for_select([
+                ['Daily', 'daily'],
+                ['Weekly', 'weekly'],
+                ['Monthly', 'monthly']
+              ], @user_setting.backup_frequency),
+              {},
+              { required: true } %>
+          <small style="display: block; color: #666; margin-top: 0.25rem;">
+            Choose how often you want to receive encrypted backup files
+          </small>
+        </div>
         <div class="field">
           <%= form.label :backup_method, "Backup Method" %>
           <%= form.select :backup_method, [['Email', 'email']], { prompt: 'Select backup method' }, { required: true } %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_08_012540) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_16_143332) do
   create_table "alert_status_caches", force: :cascade do |t|
     t.integer "alert_id", null: false
     t.boolean "is_activated", default: false
@@ -217,6 +217,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_08_012540) do
     t.text "encryption_key"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "backup_frequency", default: "daily"
     t.index ["user_id"], name: "index_user_settings_on_user_id"
   end
 
