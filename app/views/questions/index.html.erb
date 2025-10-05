@@ -48,10 +48,58 @@
             <div class="index-card">
               <h4><%= link_to question.name, question_path(question) %></h4>
               <p>Type: <%= question.question_type || "Not set" %></p>
+
+              <!-- Inline Answer Controls -->
+              <div style="margin: 1rem 0;">
+                <% case question.question_type %>
+                <% when 'bool' %>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <%= form_with url: submit_answer_question_path(question), method: :post, local: true, style: "display: inline;" do %>
+                      <%= hidden_field_tag :answer_value, '1' %>
+                      <%= submit_tag "Yes", class: "btn btn-primary", style: "padding: 0.5rem 1rem;" %>
+                    <% end %>
+                    <%= form_with url: submit_answer_question_path(question), method: :post, local: true, style: "display: inline;" do %>
+                      <%= hidden_field_tag :answer_value, '0' %>
+                      <%= submit_tag "No", class: "btn btn-secondary", style: "padding: 0.5rem 1rem;" %>
+                    <% end %>
+                  </div>
+
+                <% when 'number' %>
+                  <%= form_with url: submit_answer_question_path(question), method: :post, local: true, style: "display: flex; gap: 0.5rem; align-items: center;" do %>
+                    <%= number_field_tag :answer_value, '', step: :any, required: true, style: "flex: 1; max-width: 150px;" %>
+                    <%= submit_tag "Submit", class: "btn btn-primary", style: "padding: 0.5rem 1rem;" %>
+                  <% end %>
+
+                <% when 'string' %>
+                  <%= form_with url: submit_answer_question_path(question), method: :post, local: true, style: "display: flex; gap: 0.5rem; align-items: center;" do %>
+                    <%= text_field_tag :answer_value, '', required: true, style: "flex: 1;" %>
+                    <%= submit_tag "Submit", class: "btn btn-primary", style: "padding: 0.5rem 1rem;" %>
+                  <% end %>
+
+                <% when 'range' %>
+                  <%= form_with url: submit_answer_question_path(question), method: :post, local: true, style: "display: flex; gap: 0.5rem; align-items: center;" do %>
+                    <% if question.range_min.present? && question.range_max.present? %>
+                      <span style="font-size: 0.875rem;"><%= question.range_min %></span>
+                      <%= range_field_tag :answer_value, (question.range_min + question.range_max) / 2,
+                                          min: question.range_min,
+                                          max: question.range_max,
+                                          step: 0.1,
+                                          style: "flex: 1; max-width: 150px;",
+                                          oninput: "this.nextElementSibling.textContent = parseFloat(this.value).toFixed(1)" %>
+                      <span style="min-width: 2rem; font-weight: bold; font-size: 0.875rem;"><%= ((question.range_min + question.range_max) / 2).round(1) %></span>
+                      <span style="font-size: 0.875rem;"><%= question.range_max %></span>
+                    <% else %>
+                      <%= number_field_tag :answer_value, '', step: :any, required: true, style: "flex: 1; max-width: 150px;" %>
+                    <% end %>
+                    <%= submit_tag "Submit", class: "btn btn-primary", style: "padding: 0.5rem 1rem;" %>
+                  <% end %>
+
+                <% end %>
+              </div>
+
               <div class="index-card-actions">
                 <%= link_to "View", question_path(question) %>
                 <%= link_to "Edit", edit_question_path(question) %>
-                <%= link_to "Answer", answer_question_path(question), class: "btn btn-primary" %>
               </div>
             </div>
           <% end %>

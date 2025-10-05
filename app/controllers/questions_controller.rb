@@ -56,7 +56,7 @@ class QuestionsController < ApplicationController
     end
 
     if @answer.save
-      redirect_to @question, notice: "Answer submitted successfully"
+      redirect_to questions_path(namespace: @question.namespace), notice: "Answer submitted successfully"
     else
       render :answer, alert: "Error submitting answer"
     end

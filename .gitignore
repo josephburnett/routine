@@ -33,6 +33,9 @@
 # Ignore master key for decrypting credentials and more.
 /config/master.key
 
-# Ignore Kamal secrets and backups  
+# Ignore Kamal secrets and backups
 /.kamal/secrets.local
 /backups/
+
+# Ignore local scripts and prompts that shouldn't be committed
+/.local/
