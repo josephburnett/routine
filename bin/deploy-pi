@@ -1,0 +1,39 @@
+#!/bin/bash
+
+#
+# Deploy to Raspberry Pi using direct SSH push (no Docker registry)
+#
+# This script:
+# 1. Builds the Docker image locally for arm/v7 architecture
+# 2. Pushes the image directly to the Pi via SSH using docker-pussh (unregistry)
+# 3. Deploys the container on the Pi using Kamal
+#
+# Requirements:
+# - docker-pussh installed locally (see README)
+# - SSH access to Pi via Tailscale (joe@home.taile52c2f.ts.net)
+# - User joe must be in docker group on Pi
+#
+
+set -e
+
+# Get the git commit hash for image tagging (matches Kamal default)
+VERSION=$(git rev-parse --short HEAD)
+IMAGE_NAME="localhost/routine:${VERSION}"
+
+# Note: We build as localhost/routine but Kamal expects just "routine"
+# because it will prepend the registry server (localhost) automatically
+
+echo "🔨 Building image for arm/v7 (version: ${VERSION})..."
+docker buildx build --platform linux/arm/v7 -t "${IMAGE_NAME}" --load .
+
+echo ""
+echo "📤 Pushing image to Pi via SSH (docker pussh)..."
+docker pussh "${IMAGE_NAME}" joe@home.taile52c2f.ts.net
+
+echo ""
+echo "🚀 Deploying on Pi..."
+kamal app boot --version="${VERSION}"
+
+echo ""
+echo "✅ Deployment complete!"
+echo "🏠 Your app is now available at: http://home.taile52c2f.ts.net"
