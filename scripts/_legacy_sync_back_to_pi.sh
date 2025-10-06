@@ -12,9 +12,9 @@
 set -e
 
 # Configuration
-PI_HOST="home.local"
+PI_HOST="home.taile52c2f.ts.net"
 PI_USER="joe"
-SSH_KEY="~/.ssh/home.local"
+# SSH_KEY no longer needed with Tailscale SSH
 BACKUP_DIR="./tmp/laptop_backup"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
@@ -176,17 +176,17 @@ EOF
 
 # Copy files to Pi and execute import
 echo "🚀 Copying files to Pi and executing import..."
-scp -i "$SSH_KEY" "$LOCAL_EXPORT_FILE" "$PI_USER@$PI_HOST:/tmp/laptop_export.json"
-scp -i "$SSH_KEY" "$BACKUP_DIR/import_script.rb" "$PI_USER@$PI_HOST:/tmp/import_script.rb"
+scp "$LOCAL_EXPORT_FILE" "$PI_USER@$PI_HOST:/tmp/laptop_export.json"
+scp "$BACKUP_DIR/import_script.rb" "$PI_USER@$PI_HOST:/tmp/import_script.rb"
 
 # Execute the import script via Kamal on Pi
-ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" << 'EOF'
+ssh "$PI_USER@$PI_HOST" << 'EOF'
 cd ~/routine
 kamal app exec --interactive --reuse "cp /tmp/import_script.rb /rails/ && cp /tmp/laptop_export.json /rails/ && bin/rails runner /rails/import_script.rb /rails/laptop_export.json"
 EOF
 
 # Clean up temporary files on Pi
-ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "rm -f /tmp/laptop_export.json /tmp/import_script.rb"
+ssh "$PI_USER@$PI_HOST" "rm -f /tmp/laptop_export.json /tmp/import_script.rb"
 
 echo
 echo "✅ Database synced back to Pi successfully!"

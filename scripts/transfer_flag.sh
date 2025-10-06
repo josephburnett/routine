@@ -15,7 +15,7 @@
 #
 # Usage: 
 #   ./scripts/transfer_flag_v2.sh localhost      # Transfer flag from Pi to laptop
-#   ./scripts/transfer_flag_v2.sh home.local     # Transfer flag from laptop to Pi
+#   ./scripts/transfer_flag_v2.sh home.taile52c2f.ts.net     # Transfer flag from laptop to Pi
 #   ./scripts/transfer_flag_v2.sh --status       # Check current flag status
 #   ./scripts/transfer_flag_v2.sh --dry-run TARGET # Preview what would happen
 #
@@ -23,10 +23,10 @@
 set -e
 
 # Configuration
-PI_HOST="home.local"
+PI_HOST="home.taile52c2f.ts.net"
 LAPTOP_HOST="localhost"
 PI_USER="joe"
-SSH_KEY="~/.ssh/home.local"
+# SSH_KEY no longer needed with Tailscale SSH
 BACKUP_DIR="./tmp/flag_transfer"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
@@ -48,12 +48,12 @@ show_help() {
     cat << EOF
 🏁 Robust Flag Transfer System v2
 
-Transfer the active flag between your Pi (home.local) and laptop (localhost).
+Transfer the active flag between your Pi (home.taile52c2f.ts.net) and laptop (localhost).
 Only one deployment can hold the flag at a time to prevent data conflicts.
 
 Usage:
   $0 localhost         Transfer flag from Pi to laptop (for travel)
-  $0 home.local        Transfer flag from laptop to Pi (returning home)
+  $0 home.taile52c2f.ts.net        Transfer flag from laptop to Pi (returning home)
   $0 --status          Check current flag status on both deployments
   $0 --dry-run TARGET  Preview what would happen without making changes
   $0 --help            Show this help message
@@ -76,7 +76,7 @@ check_deployment_status() {
     if [ "$host" = "localhost" ]; then
         url="http://localhost:8080/up"
     elif [ "$host" = "$PI_HOST" ]; then
-        url="http://home.local/up"
+        url="http://home.taile52c2f.ts.net/up"
     else
         echo "ERROR"
         return
@@ -122,7 +122,7 @@ check_flag_status() {
     elif [ "$host" = "$PI_HOST" ]; then
         # For Pi, check via SSH
         local flag_output
-        flag_output=$(ssh -i "$SSH_KEY" "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) bin/rails flag:status" 2>&1 || echo "ERROR")
+        flag_output=$(ssh "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) bin/rails flag:status" 2>&1 || echo "ERROR")
         if echo "$flag_output" | grep -q "Flag is PRESENT"; then
             echo "PRESENT"
         elif echo "$flag_output" | grep -q "Flag is MISSING"; then
@@ -248,7 +248,7 @@ get_record_count() {
     local host=$1
     
     if [ "$host" = "$PI_HOST" ]; then
-        ssh -i "$SSH_KEY" "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) sqlite3 /rails/storage/production.sqlite3 \"SELECT COUNT(*) FROM (SELECT 'users' as table_name, COUNT(*) as cnt FROM users UNION ALL SELECT 'forms', COUNT(*) FROM forms UNION ALL SELECT 'sections', COUNT(*) FROM sections UNION ALL SELECT 'questions', COUNT(*) FROM questions UNION ALL SELECT 'responses', COUNT(*) FROM responses UNION ALL SELECT 'answers', COUNT(*) FROM answers UNION ALL SELECT 'metrics', COUNT(*) FROM metrics UNION ALL SELECT 'alerts', COUNT(*) FROM alerts UNION ALL SELECT 'reports', COUNT(*) FROM reports UNION ALL SELECT 'dashboards', COUNT(*) FROM dashboards);\"" 2>/dev/null | tail -1 || echo "0"
+        ssh "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) sqlite3 /rails/storage/production.sqlite3 \"SELECT COUNT(*) FROM (SELECT 'users' as table_name, COUNT(*) as cnt FROM users UNION ALL SELECT 'forms', COUNT(*) FROM forms UNION ALL SELECT 'sections', COUNT(*) FROM sections UNION ALL SELECT 'questions', COUNT(*) FROM questions UNION ALL SELECT 'responses', COUNT(*) FROM responses UNION ALL SELECT 'answers', COUNT(*) FROM answers UNION ALL SELECT 'metrics', COUNT(*) FROM metrics UNION ALL SELECT 'alerts', COUNT(*) FROM alerts UNION ALL SELECT 'reports', COUNT(*) FROM reports UNION ALL SELECT 'dashboards', COUNT(*) FROM dashboards);\"" 2>/dev/null | tail -1 || echo "0"
     elif [ "$host" = "localhost" ]; then
         local container_name=$(docker ps --format '{{.Names}}' | grep routine | head -1)
         if [ -n "$container_name" ]; then
@@ -270,9 +270,9 @@ shutdown_deployment() {
     if [ "$host" = "$PI_HOST" ]; then
         # Shutdown Pi container
         local container_name
-        container_name=$(ssh -i "$SSH_KEY" "$PI_USER@$host" "docker ps --format '{{.Names}}' | grep routine | head -1" 2>/dev/null)
+        container_name=$(ssh "$PI_USER@$host" "docker ps --format '{{.Names}}' | grep routine | head -1" 2>/dev/null)
         if [ -n "$container_name" ]; then
-            ssh -i "$SSH_KEY" "$PI_USER@$host" "docker stop $container_name" || log_warning "Failed to stop Pi container"
+            ssh "$PI_USER@$host" "docker stop $container_name" || log_warning "Failed to stop Pi container"
             log_success "Pi deployment shutdown"
         else
             log_info "Pi deployment already offline"
@@ -299,9 +299,9 @@ start_deployment() {
     if [ "$host" = "$PI_HOST" ]; then
         # Start Pi container
         local container_name
-        container_name=$(ssh -i "$SSH_KEY" "$PI_USER@$host" "docker ps -a --format '{{.Names}}' | grep routine | head -1" 2>/dev/null)
+        container_name=$(ssh "$PI_USER@$host" "docker ps -a --format '{{.Names}}' | grep routine | head -1" 2>/dev/null)
         if [ -n "$container_name" ]; then
-            ssh -i "$SSH_KEY" "$PI_USER@$host" "docker start $container_name" || log_warning "Failed to start Pi container"
+            ssh "$PI_USER@$host" "docker start $container_name" || log_warning "Failed to start Pi container"
             sleep 5  # Give container time to start
             if [ "$(check_deployment_status "$host")" = "RUNNING" ]; then
                 log_success "Pi deployment started"
@@ -386,7 +386,7 @@ Source: $source_host
 Transfer ID: $transfer_id"
     
     if [ "$host" = "$PI_HOST" ]; then
-        ssh -i "$SSH_KEY" "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) sh -c 'echo \"$flag_content\" > /rails/storage/ACTIVE_FLAG'" || {
+        ssh "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) sh -c 'echo \"$flag_content\" > /rails/storage/ACTIVE_FLAG'" || {
             log_error "Failed to create flag on Pi"
             return 1
         }
@@ -413,7 +413,7 @@ remove_flag() {
     log_info "Removing flag from $host..."
     
     if [ "$host" = "$PI_HOST" ]; then
-        ssh -i "$SSH_KEY" "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) rm -f /rails/storage/ACTIVE_FLAG" || log_warning "Failed to remove flag from Pi"
+        ssh "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) rm -f /rails/storage/ACTIVE_FLAG" || log_warning "Failed to remove flag from Pi"
     elif [ "$host" = "localhost" ]; then
         local container_name=$(docker ps --format '{{.Names}}' | grep routine | head -1)
         if [ -n "$container_name" ]; then
@@ -617,7 +617,7 @@ transfer_flag() {
             echo "🌍 Your app is now available at: http://localhost:8080"
             echo "✈️  Ready for travel!"
         else
-            echo "🏠 Your app is now available at: http://home.local"
+            echo "🏠 Your app is now available at: http://home.taile52c2f.ts.net"
             echo "🏡 Welcome home!"
         fi
         
@@ -644,22 +644,22 @@ main() {
         "--dry-run")
             if [ -z "${2:-}" ]; then
                 log_error "Dry run requires a target host"
-                echo "Usage: $0 --dry-run [localhost|home.local]"
+                echo "Usage: $0 --dry-run [localhost|home.taile52c2f.ts.net]"
                 exit 1
             fi
             dry_run_transfer "$2"
             ;;
-        "localhost"|"home.local")
+        "localhost"|"home.taile52c2f.ts.net")
             transfer_flag "$1"
             ;;
         "")
             log_error "Missing target host"
-            echo "Usage: $0 [localhost|home.local|--status|--help]"
+            echo "Usage: $0 [localhost|home.taile52c2f.ts.net|--status|--help]"
             exit 1
             ;;
         *)
             log_error "Invalid argument: $1"
-            echo "Valid options: localhost, home.local, --status, --help"
+            echo "Valid options: localhost, home.taile52c2f.ts.net, --status, --help"
             exit 1
             ;;
     esac

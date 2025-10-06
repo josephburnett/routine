@@ -12,9 +12,9 @@
 set -e
 
 # Configuration
-PI_HOST="home.local"
+PI_HOST="home.taile52c2f.ts.net"
 PI_USER="joe"
-SSH_KEY="~/.ssh/home.local"
+# SSH_KEY no longer needed with Tailscale SSH
 
 # Colors for output
 RED='\033[0;31m'
@@ -43,12 +43,12 @@ log_success "Pi connectivity verified"
 
 # Get container information
 log_info "Finding routine containers on Pi..."
-CONTAINERS=$(ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker ps --format '{{.Names}}' | grep routine" 2>/dev/null || echo "")
+CONTAINERS=$(ssh "$PI_USER@$PI_HOST" "docker ps --format '{{.Names}}' | grep routine" 2>/dev/null || echo "")
 
 if [ -z "$CONTAINERS" ]; then
     log_warning "No routine containers currently running"
     log_info "Checking stopped containers..."
-    CONTAINERS=$(ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker ps -a --format '{{.Names}}' | grep routine" 2>/dev/null || echo "")
+    CONTAINERS=$(ssh "$PI_USER@$PI_HOST" "docker ps -a --format '{{.Names}}' | grep routine" 2>/dev/null || echo "")
     if [ -z "$CONTAINERS" ]; then
         log_error "No routine containers found at all"
         exit 1
@@ -61,23 +61,23 @@ echo "$CONTAINERS" | while read -r container; do
         log_info "=== Container: $container ==="
         
         # Check if container is running
-        IS_RUNNING=$(ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker inspect --format='{{.State.Running}}' $container" 2>/dev/null || echo "false")
+        IS_RUNNING=$(ssh "$PI_USER@$PI_HOST" "docker inspect --format='{{.State.Running}}' $container" 2>/dev/null || echo "false")
         log_info "Running: $IS_RUNNING"
         
         # Check volume mounts
         log_info "Volume mounts:"
-        ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker inspect --format='{{range .Mounts}}{{.Type}}: {{.Source}} -> {{.Destination}}{{println}}{{end}}' $container" 2>/dev/null || log_warning "Could not inspect mounts"
+        ssh "$PI_USER@$PI_HOST" "docker inspect --format='{{range .Mounts}}{{.Type}}: {{.Source}} -> {{.Destination}}{{println}}{{end}}' $container" 2>/dev/null || log_warning "Could not inspect mounts"
         
         # Check if storage directory exists and what's in it
         if [ "$IS_RUNNING" = "true" ]; then
             log_info "Storage directory contents:"
-            ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker exec $container ls -la /rails/storage/ 2>/dev/null || echo 'Storage directory not accessible'" || log_warning "Could not list storage"
+            ssh "$PI_USER@$PI_HOST" "docker exec $container ls -la /rails/storage/ 2>/dev/null || echo 'Storage directory not accessible'" || log_warning "Could not list storage"
             
             # Check for flag file specifically
             log_info "Checking for ACTIVE_FLAG:"
-            if ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker exec $container test -f /rails/storage/ACTIVE_FLAG" 2>/dev/null; then
+            if ssh "$PI_USER@$PI_HOST" "docker exec $container test -f /rails/storage/ACTIVE_FLAG" 2>/dev/null; then
                 log_success "ACTIVE_FLAG found in $container"
-                ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker exec $container cat /rails/storage/ACTIVE_FLAG" 2>/dev/null || log_warning "Could not read flag content"
+                ssh "$PI_USER@$PI_HOST" "docker exec $container cat /rails/storage/ACTIVE_FLAG" 2>/dev/null || log_warning "Could not read flag content"
             else
                 log_warning "ACTIVE_FLAG not found in $container"
             fi
@@ -89,22 +89,22 @@ done
 
 echo
 log_info "=== Docker Volumes on Pi ==="
-ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker volume ls" 2>/dev/null || log_warning "Could not list volumes"
+ssh "$PI_USER@$PI_HOST" "docker volume ls" 2>/dev/null || log_warning "Could not list volumes"
 
 # Check for the specific volume mentioned in deploy.yml
 echo
 log_info "=== Survey Storage Volume ==="
-VOLUME_EXISTS=$(ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker volume ls -q | grep survey_storage" 2>/dev/null || echo "")
+VOLUME_EXISTS=$(ssh "$PI_USER@$PI_HOST" "docker volume ls -q | grep survey_storage" 2>/dev/null || echo "")
 if [ -n "$VOLUME_EXISTS" ]; then
     log_success "survey_storage volume found"
     
     # Try to inspect the volume
     log_info "Volume details:"
-    ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker volume inspect survey_storage" 2>/dev/null || log_warning "Could not inspect volume"
+    ssh "$PI_USER@$PI_HOST" "docker volume inspect survey_storage" 2>/dev/null || log_warning "Could not inspect volume"
     
     # Try to see what's in the volume using a temporary container
     log_info "Volume contents (via temporary container):"
-    ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine ls -la /data" 2>/dev/null || log_warning "Could not examine volume contents"
+    ssh "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine ls -la /data" 2>/dev/null || log_warning "Could not examine volume contents"
     
 else
     log_warning "survey_storage volume not found"
@@ -112,7 +112,7 @@ fi
 
 echo
 log_info "=== Local Deploy Config Volume Setting ==="
-VOLUME_CONFIG=$(ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "grep -A5 -B5 'survey_storage' ~/routine/config/deploy.yml" 2>/dev/null || echo "Config not found")
+VOLUME_CONFIG=$(ssh "$PI_USER@$PI_HOST" "grep -A5 -B5 'survey_storage' ~/routine/config/deploy.yml" 2>/dev/null || echo "Config not found")
 if [ -n "$VOLUME_CONFIG" ]; then
     log_info "Volume configuration from deploy.yml:"
     echo "$VOLUME_CONFIG"

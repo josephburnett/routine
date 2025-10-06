@@ -12,9 +12,9 @@
 set -e
 
 # Configuration
-PI_HOST="home.local"
+PI_HOST="home.taile52c2f.ts.net"
 PI_USER="joe"
-SSH_KEY="~/.ssh/home.local"
+# SSH_KEY no longer needed with Tailscale SSH
 BACKUP_DIR="./tmp/pi_backup"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
@@ -81,17 +81,17 @@ EOF
 
 # Copy script to Pi and execute via Kamal
 echo "🚀 Executing export script on Pi..."
-scp -i "$SSH_KEY" "$BACKUP_DIR/export_script.rb" "$PI_USER@$PI_HOST:/tmp/export_script.rb"
+scp "$BACKUP_DIR/export_script.rb" "$PI_USER@$PI_HOST:/tmp/export_script.rb"
 
 # Execute the export script via Kamal console
-ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" << 'EOF'
+ssh "$PI_USER@$PI_HOST" << 'EOF'
 cd ~/routine
 kamal app exec --interactive --reuse "cp /tmp/export_script.rb /rails/ && bin/rails runner /rails/export_script.rb"
 EOF
 
 # Find and download the export file
 echo "📥 Downloading export file from Pi..."
-EXPORT_FILE=$(ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "ls -t /home/joe/routine/storage/db_export_*.json | head -1")
+EXPORT_FILE=$(ssh "$PI_USER@$PI_HOST" "ls -t /home/joe/routine/storage/db_export_*.json | head -1")
 
 if [ -z "$EXPORT_FILE" ]; then
     echo "❌ No export file found on Pi!"
@@ -100,11 +100,11 @@ fi
 
 # Download the export file
 LOCAL_EXPORT_FILE="$BACKUP_DIR/db_export_$TIMESTAMP.json"
-scp -i "$SSH_KEY" "$PI_USER@$PI_HOST:$EXPORT_FILE" "$LOCAL_EXPORT_FILE"
+scp "$PI_USER@$PI_HOST:$EXPORT_FILE" "$LOCAL_EXPORT_FILE"
 
 # Also copy the actual SQLite files as backup
 echo "📁 Copying SQLite database files..."
-scp -i "$SSH_KEY" "$PI_USER@$PI_HOST:~/routine/storage/production*.sqlite3" "$BACKUP_DIR/" || true
+scp "$PI_USER@$PI_HOST:~/routine/storage/production*.sqlite3" "$BACKUP_DIR/" || true
 
 echo
 echo "✅ Backup completed successfully!"

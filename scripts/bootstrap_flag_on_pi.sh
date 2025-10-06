@@ -13,9 +13,9 @@
 set -e
 
 # Configuration
-PI_HOST="home.local"
+PI_HOST="home.taile52c2f.ts.net"
 PI_USER="joe"
-SSH_KEY="~/.ssh/home.local"
+# SSH_KEY no longer needed with Tailscale SSH
 
 # Colors for output
 RED='\033[0;31m'
@@ -45,7 +45,7 @@ if ! ping -c 1 -W 2 "$PI_HOST" >/dev/null 2>&1; then
     exit 1
 fi
 
-if ! ssh -i "$SSH_KEY" -o ConnectTimeout=5 "$PI_USER@$PI_HOST" "echo 'SSH OK'" >/dev/null 2>&1; then
+if ! ssh -o ConnectTimeout=5 "$PI_USER@$PI_HOST" "echo 'SSH OK'" >/dev/null 2>&1; then
     log_error "Cannot SSH to $PI_HOST"
     log_info "Check your SSH key and Pi connectivity"
     exit 1
@@ -54,14 +54,14 @@ log_success "Pi connectivity verified"
 
 # Check if Pi has Docker containers running
 log_info "Checking Pi Docker containers..."
-CONTAINER_NAME=$(ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker ps --format '{{.Names}}' | grep routine" 2>/dev/null | head -1)
+CONTAINER_NAME=$(ssh "$PI_USER@$PI_HOST" "docker ps --format '{{.Names}}' | grep routine" 2>/dev/null | head -1)
 
 if [ -z "$CONTAINER_NAME" ]; then
     log_error "No routine containers found on Pi"
     log_info "Make sure your Pi deployment is running. From your main machine:"
     log_info "  kamal deploy"
     log_info "Or check what containers are running on Pi:"
-    log_info "  ssh -i $SSH_KEY $PI_USER@$PI_HOST 'docker ps'"
+    log_info "  ssh $PI_USER@$PI_HOST 'docker ps'"
     exit 1
 fi
 
@@ -69,10 +69,10 @@ log_success "Found routine container: $CONTAINER_NAME"
 
 # Check if flag already exists
 log_info "Checking if flag already exists..."
-if ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker exec $CONTAINER_NAME test -f /rails/storage/ACTIVE_FLAG" 2>/dev/null; then
+if ssh "$PI_USER@$PI_HOST" "docker exec $CONTAINER_NAME test -f /rails/storage/ACTIVE_FLAG" 2>/dev/null; then
     log_warning "Flag already exists on Pi!"
     log_info "Current flag content:"
-    ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker exec $CONTAINER_NAME cat /rails/storage/ACTIVE_FLAG" 2>/dev/null || echo "Could not read flag content"
+    ssh "$PI_USER@$PI_HOST" "docker exec $CONTAINER_NAME cat /rails/storage/ACTIVE_FLAG" 2>/dev/null || echo "Could not read flag content"
     echo
     printf "Overwrite existing flag? (y/N): "
     read -r response
@@ -91,12 +91,12 @@ TRANSFER_ID="bootstrap_$(date +"%Y%m%d_%H%M%S")"
 
 FLAG_CONTENT="ACTIVE_FLAG
 Created: $TIMESTAMP
-Host: home.local
+Host: home.taile52c2f.ts.net
 Source: manual_bootstrap
 Transfer ID: $TRANSFER_ID"
 
 # Create the flag via SSH + Docker
-ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" << EOF
+ssh "$PI_USER@$PI_HOST" << EOF
 docker exec $CONTAINER_NAME mkdir -p /rails/storage
 docker exec $CONTAINER_NAME sh -c "cat > /rails/storage/ACTIVE_FLAG << 'FLAGEOF'
 $FLAG_CONTENT
@@ -105,11 +105,11 @@ EOF
 
 # Verify flag creation
 log_info "Verifying flag creation..."
-if ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker exec $CONTAINER_NAME test -f /rails/storage/ACTIVE_FLAG" 2>/dev/null; then
+if ssh "$PI_USER@$PI_HOST" "docker exec $CONTAINER_NAME test -f /rails/storage/ACTIVE_FLAG" 2>/dev/null; then
     log_success "Flag created successfully!"
     echo
     log_info "Flag content:"
-    ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker exec $CONTAINER_NAME cat /rails/storage/ACTIVE_FLAG" 2>/dev/null || echo "Could not read flag content"
+    ssh "$PI_USER@$PI_HOST" "docker exec $CONTAINER_NAME cat /rails/storage/ACTIVE_FLAG" 2>/dev/null || echo "Could not read flag content"
 else
     log_error "Flag creation failed!"
     exit 1
@@ -124,7 +124,7 @@ log_info "   kamal deploy"
 log_info ""
 log_info "2. Test the new flag system:"
 log_info "   kamal app exec --reuse 'bin/rails flag:status'"
-log_info "   OR directly: ssh -i $SSH_KEY $PI_USER@$PI_HOST 'docker exec $CONTAINER_NAME bin/rails flag:status'"
+log_info "   OR directly: ssh $PI_USER@$PI_HOST 'docker exec $CONTAINER_NAME bin/rails flag:status'"
 log_info ""
 log_info "3. Check transfer system status:"
 log_info "   ./scripts/transfer_flag.sh --status"

@@ -6,19 +6,19 @@
 # This script exports the complete database using SQLite's native .dump command
 # which captures ALL data automatically - no hardcoded model lists required.
 #
-# Usage: ./_export_database_v2.sh [home.local|localhost] [output_file]
+# Usage: ./_export_database_v2.sh [home.taile52c2f.ts.net|localhost] [output_file]
 #
 
 set -e
 
 HOST=$1
 OUTPUT_FILE=$2
-PI_HOST="home.local"
+PI_HOST="home.taile52c2f.ts.net"
 PI_USER="joe"
-SSH_KEY="~/.ssh/home.local"
+# SSH_KEY no longer needed with Tailscale SSH
 
 if [ -z "$HOST" ] || [ -z "$OUTPUT_FILE" ]; then
-    echo "Usage: $0 [home.local|localhost] [output_file]"
+    echo "Usage: $0 [home.taile52c2f.ts.net|localhost] [output_file]"
     exit 1
 fi
 
@@ -33,19 +33,19 @@ if [ "$HOST" = "$PI_HOST" ]; then
     remote_export="/tmp/db_export_$(date +%Y%m%d_%H%M%S).sql"
     
     # Check if container is running
-    container_name=$(ssh -i "$SSH_KEY" "$PI_USER@$HOST" "docker ps --format '{{.Names}}' | grep routine | head -1" 2>/dev/null)
+    container_name=$(ssh "$PI_USER@$HOST" "docker ps --format '{{.Names}}' | grep routine | head -1" 2>/dev/null)
     
     if [ -n "$container_name" ]; then
         # Container is running - export via container
         echo "📦 Exporting via running container: $container_name"
-        ssh -i "$SSH_KEY" "$PI_USER@$HOST" "docker exec $container_name sqlite3 /rails/storage/production.sqlite3 '.dump'" > "$OUTPUT_FILE"
+        ssh "$PI_USER@$HOST" "docker exec $container_name sqlite3 /rails/storage/production.sqlite3 '.dump'" > "$OUTPUT_FILE"
     else
         # Container is stopped - use minimal SQLite container for direct export
         echo "📦 Container stopped, using minimal SQLite container for export..."
         
         # Export directly from volume using lightweight SQLite container
         # Redirect apk output to /dev/null to avoid contaminating SQL dump
-        ssh -i "$SSH_KEY" "$PI_USER@$HOST" "docker run --rm -v survey_storage:/data alpine sh -c 'apk add --no-cache sqlite >/dev/null 2>&1 && sqlite3 /data/production.sqlite3 .dump'" > "$OUTPUT_FILE"
+        ssh "$PI_USER@$HOST" "docker run --rm -v survey_storage:/data alpine sh -c 'apk add --no-cache sqlite >/dev/null 2>&1 && sqlite3 /data/production.sqlite3 .dump'" > "$OUTPUT_FILE"
         
         if [ $? -ne 0 ]; then
             echo "❌ Failed to export database using SQLite container"

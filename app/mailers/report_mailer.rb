@@ -1,5 +1,5 @@
 class ReportMailer < ApplicationMailer
-  default from: "routine@#{ENV.fetch('APPLICATION_HOST', 'home.local')}"
+  default from: "routine@#{ENV.fetch('APPLICATION_HOST', 'home.taile52c2f.ts.net')}"
 
   def scheduled_report(report)
     @report = report

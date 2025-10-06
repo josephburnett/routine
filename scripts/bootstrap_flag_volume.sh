@@ -12,9 +12,9 @@
 set -e
 
 # Configuration
-PI_HOST="home.local"
+PI_HOST="home.taile52c2f.ts.net"
 PI_USER="joe"
-SSH_KEY="~/.ssh/home.local"
+# SSH_KEY no longer needed with Tailscale SSH
 
 # Colors for output
 RED='\033[0;31m'
@@ -46,12 +46,12 @@ log_success "Pi connectivity verified"
 
 # Check if volume exists
 log_info "Checking for survey_storage volume..."
-VOLUME_EXISTS=$(ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker volume ls -q | grep survey_storage" 2>/dev/null || echo "")
+VOLUME_EXISTS=$(ssh "$PI_USER@$PI_HOST" "docker volume ls -q | grep survey_storage" 2>/dev/null || echo "")
 
 if [ -z "$VOLUME_EXISTS" ]; then
     log_warning "survey_storage volume not found"
     log_info "Creating survey_storage volume..."
-    ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker volume create survey_storage"
+    ssh "$PI_USER@$PI_HOST" "docker volume create survey_storage"
     log_success "Volume created"
 else
     log_success "survey_storage volume found"
@@ -59,12 +59,12 @@ fi
 
 # Check if flag already exists in volume
 log_info "Checking if flag already exists in volume..."
-FLAG_EXISTS=$(ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine test -f /data/ACTIVE_FLAG && echo 'yes' || echo 'no'" 2>/dev/null)
+FLAG_EXISTS=$(ssh "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine test -f /data/ACTIVE_FLAG && echo 'yes' || echo 'no'" 2>/dev/null)
 
 if [ "$FLAG_EXISTS" = "yes" ]; then
     log_warning "Flag already exists in volume!"
     log_info "Current flag content:"
-    ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine cat /data/ACTIVE_FLAG" 2>/dev/null || echo "Could not read flag content"
+    ssh "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine cat /data/ACTIVE_FLAG" 2>/dev/null || echo "Could not read flag content"
     echo
     printf "Overwrite existing flag? (y/N): "
     read -r response
@@ -83,12 +83,12 @@ TRANSFER_ID="bootstrap_volume_$(date +"%Y%m%d_%H%M%S")"
 
 FLAG_CONTENT="ACTIVE_FLAG
 Created: $TIMESTAMP
-Host: home.local
+Host: home.taile52c2f.ts.net
 Source: volume_bootstrap
 Transfer ID: $TRANSFER_ID"
 
 # Create the flag using a temporary container with volume mounted
-ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" << EOF
+ssh "$PI_USER@$PI_HOST" << EOF
 docker run --rm -v survey_storage:/data alpine sh -c "cat > /data/ACTIVE_FLAG << 'FLAGEOF'
 $FLAG_CONTENT
 FLAGEOF"
@@ -96,11 +96,11 @@ EOF
 
 # Verify flag creation
 log_info "Verifying flag creation in volume..."
-if ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine test -f /data/ACTIVE_FLAG" 2>/dev/null; then
+if ssh "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine test -f /data/ACTIVE_FLAG" 2>/dev/null; then
     log_success "Flag created successfully in volume!"
     echo
     log_info "Flag content:"
-    ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine cat /data/ACTIVE_FLAG" 2>/dev/null || echo "Could not read flag content"
+    ssh "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine cat /data/ACTIVE_FLAG" 2>/dev/null || echo "Could not read flag content"
 else
     log_error "Flag creation failed!"
     exit 1
