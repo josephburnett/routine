@@ -34,11 +34,35 @@
         <%= form.submit "Update Section" %>
       </div>
     <% end %>
-    
-    <div style="margin-top: 1rem; text-align: center;">
-      <%= link_to "Delete Section", soft_delete_section_path(@section), 
-          data: { "turbo-method": :patch, confirm: "Are you sure you want to delete this section? This action cannot be undone." }, 
-          class: "btn", 
+  </div>
+
+  <% if @section.questions.any? %>
+    <div class="card">
+      <h3>Questions in this Section</h3>
+      <ul style="list-style: none; padding: 0;">
+        <% @section.questions.each do |question| %>
+          <li style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+            <span>
+              <%= link_to question.name, question_path(question) %>
+              <span style="color: var(--text-secondary); font-size: 0.875rem; margin-left: 0.5rem;">
+                (<%= question.question_type %>)
+              </span>
+            </span>
+            <%= link_to "✕", remove_question_section_path(@section, question_id: question.id),
+                data: { "turbo-method": :patch, confirm: "Remove this question from the section?" },
+                style: "color: var(--error); font-size: 1.5rem; font-weight: bold; text-decoration: none; padding: 0 0.5rem;",
+                title: "Remove question" %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="card">
+    <div style="text-align: center;">
+      <%= link_to "Delete Section", soft_delete_section_path(@section),
+          data: { "turbo-method": :patch, confirm: "Are you sure you want to delete this section? This action cannot be undone." },
+          class: "btn",
           style: "background-color: var(--error); color: var(--white);" %>
     </div>
   </div>

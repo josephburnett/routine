@@ -29,11 +29,35 @@
         <%= form.submit "Update Form" %>
       </div>
     <% end %>
-    
-    <div style="margin-top: 1rem; text-align: center;">
-      <%= link_to "Delete Form", soft_delete_form_path(@form), 
-          data: { "turbo-method": :patch, confirm: "Are you sure you want to delete this form? This action cannot be undone." }, 
-          class: "btn", 
+  </div>
+
+  <% if @form.sections.any? %>
+    <div class="card">
+      <h3>Sections in this Form</h3>
+      <ul style="list-style: none; padding: 0;">
+        <% @form.sections.each do |section| %>
+          <li style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+            <span>
+              <%= link_to section.name, section_path(section) %>
+              <span style="color: var(--text-secondary); font-size: 0.875rem; margin-left: 0.5rem;">
+                (<%= pluralize(section.questions.count, 'question') %>)
+              </span>
+            </span>
+            <%= link_to "✕", remove_section_form_path(@form, section_id: section.id),
+                data: { "turbo-method": :patch, confirm: "Remove this section from the form?" },
+                style: "color: var(--error); font-size: 1.5rem; font-weight: bold; text-decoration: none; padding: 0 0.5rem;",
+                title: "Remove section" %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="card">
+    <div style="text-align: center;">
+      <%= link_to "Delete Form", soft_delete_form_path(@form),
+          data: { "turbo-method": :patch, confirm: "Are you sure you want to delete this form? This action cannot be undone." },
+          class: "btn",
           style: "background-color: var(--error); color: var(--white);" %>
     </div>
   </div>

@@ -2,7 +2,7 @@ class SectionsController < ApplicationController
   include NamespaceBrowsing
 
   before_action :require_login
-  before_action :find_section, only: [ :show, :edit, :update, :soft_delete ]
+  before_action :find_section, only: [ :show, :edit, :update, :soft_delete, :remove_question ]
 
   def index
     setup_namespace_browsing(Section, :sections_path)
@@ -70,6 +70,17 @@ class SectionsController < ApplicationController
       redirect_to @section, notice: "Question added to section successfully"
     else
       redirect_to @section, alert: "Question is already in this section"
+    end
+  end
+
+  def remove_question
+    @question = current_user.questions.find(params[:question_id])
+
+    if @section.questions.include?(@question)
+      @section.questions.delete(@question)
+      redirect_to edit_section_path(@section), notice: "Question removed from section successfully"
+    else
+      redirect_to edit_section_path(@section), alert: "Question is not in this section"
     end
   end
 

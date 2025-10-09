@@ -20,6 +20,7 @@ Rails.application.routes.draw do
       post :submit_survey
       patch :soft_delete
       patch :add_section
+      patch :remove_section
       patch :update_draft
     end
   end
@@ -29,6 +30,7 @@ Rails.application.routes.draw do
     member do
       patch :soft_delete
       patch :add_question
+      patch :remove_question
     end
   end
 

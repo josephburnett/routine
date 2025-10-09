@@ -2,7 +2,7 @@ class FormsController < ApplicationController
   include NamespaceBrowsing
 
   before_action :require_login
-  before_action :find_form, only: [ :show, :edit, :update, :soft_delete, :survey, :submit_survey, :update_draft ]
+  before_action :find_form, only: [ :show, :edit, :update, :soft_delete, :survey, :submit_survey, :update_draft, :remove_section ]
 
   def index
     setup_namespace_browsing(Form, :forms_path)
@@ -109,6 +109,17 @@ class FormsController < ApplicationController
       redirect_to @form, notice: "Section added to form successfully"
     else
       redirect_to @form, alert: "Section is already in this form"
+    end
+  end
+
+  def remove_section
+    @section = current_user.sections.find(params[:section_id])
+
+    if @form.sections.include?(@section)
+      @form.sections.delete(@section)
+      redirect_to edit_form_path(@form), notice: "Section removed from form successfully"
+    else
+      redirect_to edit_form_path(@form), alert: "Section is not in this form"
     end
   end
 
