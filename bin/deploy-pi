@@ -12,9 +12,24 @@
 # - docker-pussh installed locally (see README)
 # - SSH access to Pi via Tailscale (joe@home.taile52c2f.ts.net)
 # - User joe must be in docker group on Pi
+# - 1Password CLI signed in (for secrets)
 #
 
 set -e
+
+# Check if 1Password CLI is signed in
+echo "🔐 Checking 1Password CLI authentication..."
+if ! op whoami &> /dev/null; then
+  echo ""
+  echo "❌ Error: You are not signed in to 1Password CLI"
+  echo ""
+  echo "Please sign in first:"
+  echo "  eval \$(op signin)"
+  echo ""
+  exit 1
+fi
+echo "✅ 1Password CLI authenticated"
+echo ""
 
 # Get the git commit hash for image tagging (matches Kamal default)
 VERSION=$(git rev-parse --short HEAD)
