@@ -6,19 +6,19 @@
 # This script imports a complete database using SQLite's native .read command
 # which restores ALL data atomically - safer than application-level imports.
 #
-# Usage: ./_import_database_v2.sh [home.taile52c2f.ts.net|localhost] [input_file]
+# Usage: ./_import_database_v2.sh [home.gila-lionfish.ts.net|localhost] [input_file]
 #
 
 set -e
 
 HOST=$1
 INPUT_FILE=$2
-PI_HOST="home.taile52c2f.ts.net"
+PI_HOST="home.gila-lionfish.ts.net"
 PI_USER="joe"
 # SSH_KEY no longer needed with Tailscale SSH
 
 if [ -z "$HOST" ] || [ -z "$INPUT_FILE" ]; then
-    echo "Usage: $0 [home.taile52c2f.ts.net|localhost] [input_file]"
+    echo "Usage: $0 [home.gila-lionfish.ts.net|localhost] [input_file]"
     exit 1
 fi
 
@@ -48,14 +48,12 @@ Host: $host
 Source: $reason
 Transfer ID: $reason\" > /rails/storage/ACTIVE_FLAG'"
     elif [ "$host" = "localhost" ]; then
-        local container_name=$(docker ps --format '{{.Names}}' | grep routine | head -1)
-        if [ -n "$container_name" ]; then
-            docker exec "$container_name" sh -c "echo \"ACTIVE_FLAG
+        # For localhost, write flag via volume to avoid permission issues
+        docker run --rm -v survey_storage_local:/storage alpine sh -c "echo \"ACTIVE_FLAG
 Created: \$(date -Iseconds)
 Host: $host
 Source: $reason
-Transfer ID: $reason\" > /rails/storage/ACTIVE_FLAG"
-        fi
+Transfer ID: $reason\" > /storage/ACTIVE_FLAG"
     fi
 }
 
@@ -66,10 +64,8 @@ remove_flag() {
     if [ "$host" = "$PI_HOST" ]; then
         ssh "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) rm -f /rails/storage/ACTIVE_FLAG" || true
     elif [ "$host" = "localhost" ]; then
-        local container_name=$(docker ps --format '{{.Names}}' | grep routine | head -1)
-        if [ -n "$container_name" ]; then
-            docker exec "$container_name" rm -f /rails/storage/ACTIVE_FLAG || true
-        fi
+        # For localhost, remove flag via volume to avoid permission issues
+        docker run --rm -v survey_storage_local:/storage alpine rm -f /storage/ACTIVE_FLAG || true
     fi
 }
 

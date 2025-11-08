@@ -12,7 +12,7 @@
 set -e
 
 # Configuration
-PI_HOST="home.taile52c2f.ts.net"
+PI_HOST="home.gila-lionfish.ts.net"
 PI_USER="joe"
 # SSH_KEY no longer needed with Tailscale SSH
 

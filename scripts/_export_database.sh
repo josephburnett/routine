@@ -6,19 +6,19 @@
 # This script exports the complete database using SQLite's native .dump command
 # which captures ALL data automatically - no hardcoded model lists required.
 #
-# Usage: ./_export_database_v2.sh [home.taile52c2f.ts.net|localhost] [output_file]
+# Usage: ./_export_database_v2.sh [home.gila-lionfish.ts.net|localhost] [output_file]
 #
 
 set -e
 
 HOST=$1
 OUTPUT_FILE=$2
-PI_HOST="home.taile52c2f.ts.net"
+PI_HOST="home.gila-lionfish.ts.net"
 PI_USER="joe"
 # SSH_KEY no longer needed with Tailscale SSH
 
 if [ -z "$HOST" ] || [ -z "$OUTPUT_FILE" ]; then
-    echo "Usage: $0 [home.taile52c2f.ts.net|localhost] [output_file]"
+    echo "Usage: $0 [home.gila-lionfish.ts.net|localhost] [output_file]"
     exit 1
 fi
 

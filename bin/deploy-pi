@@ -10,7 +10,7 @@
 #
 # Requirements:
 # - docker-pussh installed locally (see README)
-# - SSH access to Pi via Tailscale (joe@home.taile52c2f.ts.net)
+# - SSH access to Pi via Tailscale (joe@home.gila-lionfish.ts.net)
 # - User joe must be in docker group on Pi
 # - 1Password CLI signed in (for secrets)
 #
@@ -43,7 +43,7 @@ docker buildx build --platform linux/arm/v7 -t "${IMAGE_NAME}" --load .
 
 echo ""
 echo "📤 Pushing image to Pi via SSH (docker pussh)..."
-docker pussh "${IMAGE_NAME}" joe@home.taile52c2f.ts.net
+docker pussh "${IMAGE_NAME}" joe@home.gila-lionfish.ts.net
 
 echo ""
 echo "🚀 Deploying on Pi..."
@@ -51,4 +51,4 @@ kamal app boot --version="${VERSION}"
 
 echo ""
 echo "✅ Deployment complete!"
-echo "🏠 Your app is now available at: http://home.taile52c2f.ts.net"
+echo "🏠 Your app is now available at: http://home.gila-lionfish.ts.net"

@@ -47,7 +47,7 @@ Rails.application.configure do
       This deployment is not authorized to start because it's missing the ACTIVE_FLAG file.
 
       The flag system ensures only one deployment (Pi or laptop) runs at a time to prevent
-      data conflicts when traveling between home.taile52c2f.ts.net and localhost.
+      data conflicts when traveling between home.gila-lionfish.ts.net and localhost.
 
       To transfer the flag to this deployment, run:
         ./scripts/transfer_flag.sh #{ENV.fetch('APPLICATION_HOST', 'unknown')}

@@ -21,7 +21,7 @@ The Flag Transfer System ensures only one deployment (Pi or laptop) runs at a ti
 ./scripts/transfer_flag.sh localhost
 
 # Transfer flag back to Pi (returning home)
-./scripts/transfer_flag.sh home.taile52c2f.ts.net
+./scripts/transfer_flag.sh home.gila-lionfish.ts.net
 
 # Preview what would happen (no changes made)
 ./scripts/transfer_flag.sh --dry-run localhost
@@ -49,10 +49,10 @@ curl http://localhost:3000/up
 ### 🏠 Returning Home
 ```bash
 # Transfer back to Pi
-./scripts/transfer_flag.sh home.taile52c2f.ts.net
+./scripts/transfer_flag.sh home.gila-lionfish.ts.net
 
 # Verify transfer succeeded  
-curl http://home.taile52c2f.ts.net:3000/up
+curl http://home.gila-lionfish.ts.net:3000/up
 ```
 
 ## How It Works
@@ -99,7 +99,7 @@ kamal app exec -d local --reuse "bin/rails flag:force_create[emergency_restore]"
 This is the safety system working correctly:
 ```bash
 # Don't bypass this - instead transfer the flag properly
-./scripts/transfer_flag.sh localhost    # Or home.taile52c2f.ts.net
+./scripts/transfer_flag.sh localhost    # Or home.gila-lionfish.ts.net
 ```
 
 ### Transfer fails midway
@@ -234,10 +234,10 @@ pi_rails_exec() {
 **Debug Steps**:
 ```bash
 # Test Pi connection
-ssh -i ~/.ssh/home.taile52c2f.ts.net joe@home.taile52c2f.ts.net "docker ps | grep routine"
+ssh -i ~/.ssh/home.gila-lionfish.ts.net joe@home.gila-lionfish.ts.net "docker ps | grep routine"
 
 # Test Rails command directly
-ssh -i ~/.ssh/home.taile52c2f.ts.net joe@home.taile52c2f.ts.net \
+ssh -i ~/.ssh/home.gila-lionfish.ts.net joe@home.gila-lionfish.ts.net \
     "docker exec CONTAINER_NAME bin/rails flag:status"
 
 # Test grep pattern
@@ -247,7 +247,7 @@ echo "✅ Flag is PRESENT" | grep -q "Flag is PRESENT" && echo "MATCH"
 **Common Fixes**:
 - Remove `log_info` calls from inside `check_flag_status()` function
 - Ensure function only outputs final status (PRESENT/MISSING/OFFLINE)
-- Fix SSH key permissions: `chmod 600 ~/.ssh/home.taile52c2f.ts.net`
+- Fix SSH key permissions: `chmod 600 ~/.ssh/home.gila-lionfish.ts.net`
 
 ### 2. "kamal: command not found" Errors
 
@@ -278,11 +278,11 @@ kamal app exec --reuse "bin/rails flag:force_create['Bootstrap reason']"
 **Debug Export**:
 ```bash
 # Test export manually
-ssh -i ~/.ssh/home.taile52c2f.ts.net joe@home.taile52c2f.ts.net \
+ssh -i ~/.ssh/home.gila-lionfish.ts.net joe@home.gila-lionfish.ts.net \
     "docker exec CONTAINER_NAME bin/rails db:sync:export"
 
 # Check export file location
-ssh -i ~/.ssh/home.taile52c2f.ts.net joe@home.taile52c2f.ts.net \
+ssh -i ~/.ssh/home.gila-lionfish.ts.net joe@home.gila-lionfish.ts.net \
     "ls -la ~/routine/tmp/db_sync/"
 ```
 
@@ -306,7 +306,7 @@ kamal app exec -d local --reuse "bin/rails db:sync:import[/path/to/export.json]"
 - Local deployment configuration in `config/deploy.local.yml`
 
 ### Network Requirements
-- Pi accessible at `home.taile52c2f.ts.net` from laptop
+- Pi accessible at `home.gila-lionfish.ts.net` from laptop
 - SSH connectivity on standard port
 - Sufficient bandwidth for database transfer
 
@@ -321,10 +321,10 @@ Key differences:
 
 | Aspect | Pi Deployment | Local Deployment |
 |--------|---------------|------------------|
-| Host | home.taile52c2f.ts.net | localhost |
+| Host | home.gila-lionfish.ts.net | localhost |
 | Architecture | ARM v7 | AMD64 |
 | SSH User | joe | current user |
-| SSH Key | ~/.ssh/home.taile52c2f.ts.net | default |
+| SSH Key | ~/.ssh/home.gila-lionfish.ts.net | default |
 | Volume | survey_storage | survey_storage_local |
 
 ## Recovery Procedures
@@ -355,7 +355,7 @@ kamal app exec -d local --reuse "bin/rails db:sync:import[/path/to/export.json]"
 
 ## Security Considerations
 
-- **SSH Keys**: Private key `~/.ssh/home.taile52c2f.ts.net` must have correct permissions (600)
+- **SSH Keys**: Private key `~/.ssh/home.gila-lionfish.ts.net` must have correct permissions (600)
 - **Flag Authority**: Flag file grants deployment authorization - protect access
 - **Database Transfer**: Export files contain full database - clean up after transfer
 - **Container Access**: Direct Docker commands bypass Kamal security features

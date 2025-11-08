@@ -55,7 +55,8 @@ asset_path: /rails/public/assets
 builder:
   arch: amd64
 
-# SSH configuration for local deployment - disable SSH for localhost
+# SSH configuration for local deployment
+# Note: Kamal requires SSH even for localhost deployments
+# You need to have SSH server running locally or use direct Docker commands
 ssh:
   user: ${USER}
-  # For localhost, Kamal will use Docker directly instead of SSH

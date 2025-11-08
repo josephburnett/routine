@@ -15,7 +15,7 @@
 #
 # Usage: 
 #   ./scripts/transfer_flag_v2.sh localhost      # Transfer flag from Pi to laptop
-#   ./scripts/transfer_flag_v2.sh home.taile52c2f.ts.net     # Transfer flag from laptop to Pi
+#   ./scripts/transfer_flag_v2.sh home.gila-lionfish.ts.net     # Transfer flag from laptop to Pi
 #   ./scripts/transfer_flag_v2.sh --status       # Check current flag status
 #   ./scripts/transfer_flag_v2.sh --dry-run TARGET # Preview what would happen
 #
@@ -23,7 +23,7 @@
 set -e
 
 # Configuration
-PI_HOST="home.taile52c2f.ts.net"
+PI_HOST="home.gila-lionfish.ts.net"
 LAPTOP_HOST="localhost"
 PI_USER="joe"
 # SSH_KEY no longer needed with Tailscale SSH
@@ -48,12 +48,12 @@ show_help() {
     cat << EOF
 🏁 Robust Flag Transfer System v2
 
-Transfer the active flag between your Pi (home.taile52c2f.ts.net) and laptop (localhost).
+Transfer the active flag between your Pi (home.gila-lionfish.ts.net) and laptop (localhost).
 Only one deployment can hold the flag at a time to prevent data conflicts.
 
 Usage:
   $0 localhost         Transfer flag from Pi to laptop (for travel)
-  $0 home.taile52c2f.ts.net        Transfer flag from laptop to Pi (returning home)
+  $0 home.gila-lionfish.ts.net        Transfer flag from laptop to Pi (returning home)
   $0 --status          Check current flag status on both deployments
   $0 --dry-run TARGET  Preview what would happen without making changes
   $0 --help            Show this help message
@@ -76,7 +76,7 @@ check_deployment_status() {
     if [ "$host" = "localhost" ]; then
         url="http://localhost:8080/up"
     elif [ "$host" = "$PI_HOST" ]; then
-        url="http://home.taile52c2f.ts.net/up"
+        url="http://home.gila-lionfish.ts.net/up"
     else
         echo "ERROR"
         return
@@ -105,7 +105,7 @@ check_flag_status() {
     # App is running, check flag status
     if [ "$host" = "localhost" ]; then
         # For localhost, check via Docker if container exists
-        local container_name=$(docker ps --format '{{.Names}}' | grep routine | head -1)
+        local container_name=$(docker ps --format '{{.Names}}' | grep -E "routine" | head -1)
         if [ -n "$container_name" ]; then
             local flag_output
             flag_output=$(docker exec "$container_name" bin/rails flag:status 2>&1 || echo "ERROR")
@@ -313,19 +313,19 @@ start_deployment() {
             return 1
         fi
     elif [ "$host" = "localhost" ]; then
-        # For localhost, use Kamal deploy for proper lifecycle management
-        log_info "Deploying to localhost using Kamal..."
-        
+        # For localhost, use Docker directly (no SSH required)
+        log_info "Deploying to localhost using Docker..."
+
         # First, create a temporary flag in the volume to allow container to start
         docker run --rm -v survey_storage_local:/storage alpine sh -c 'echo "TEMP_FLAG_FOR_STARTUP
-Created: $(date -Iseconds)  
+Created: $(date -Iseconds)
 Host: localhost
 Source: temp_startup
 Transfer ID: temp_$(date +%s)" > /storage/ACTIVE_FLAG'
-        
-        # Validate 1Password authentication for Kamal secrets
+
+        # Validate 1Password authentication for secrets
         log_info "Validating 1Password authentication..."
-        
+
         # Check if 1Password CLI is available and authenticated
         if ! op whoami >/dev/null 2>&1; then
             log_error "1Password CLI not authenticated. Please run the following commands:"
@@ -333,22 +333,79 @@ Transfer ID: temp_$(date +%s)" > /storage/ACTIVE_FLAG'
             log_error "This is required to load Rails master key and SMTP password."
             exit 1
         fi
-        
+
         log_info "1Password authentication verified"
-        
-        # Use Kamal to deploy to localhost
-        log_info "Deploying with Kamal..."
-        if ! kamal deploy -d local --skip-push 2>/dev/null; then
-            log_error "Kamal deployment to localhost failed"
+
+        # Get secrets from 1Password
+        RAILS_MASTER_KEY=$(op read "op://Personal/Routine Master Key/password")
+        SMTP_PASSWORD=$(op read "op://Personal/Routine SMTP Password/password")
+
+        # Generate SECRET_KEY_BASE from RAILS_MASTER_KEY if not explicitly stored
+        # Rails typically derives this from the master key, but we'll be explicit
+        if op item get "Secret Key Base" --vault Personal >/dev/null 2>&1; then
+            SECRET_KEY_BASE=$(op read "op://Personal/Secret Key Base/credential")
+        else
+            # Generate a deterministic secret_key_base from the master key
+            SECRET_KEY_BASE=$(echo -n "$RAILS_MASTER_KEY" | sha256sum | cut -d' ' -f1)$(echo -n "${RAILS_MASTER_KEY}salt" | sha256sum | cut -d' ' -f1)
+        fi
+
+        # Stop any existing local container
+        existing_container=$(docker ps -a --format '{{.Names}}' | grep "routine.*local" | head -1)
+        if [ -n "$existing_container" ]; then
+            log_info "Stopping existing local container: $existing_container"
+            docker stop "$existing_container" 2>/dev/null || true
+            docker rm "$existing_container" 2>/dev/null || true
+        fi
+
+        # Get the amd64 image for localhost (not the ARM images for Pi)
+        # First try routine:local, then josephburnett/routine with amd64 architecture
+        image=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E "^routine:local|^josephburnett/routine:latest-local" | head -1)
+        if [ -z "$image" ]; then
+            # Fallback: find any amd64 routine image
+            log_warning "No routine:local image found, checking for amd64 images..."
+            for img in $(docker images --format '{{.Repository}}:{{.Tag}}' | grep routine); do
+                arch=$(docker inspect "$img" --format '{{.Architecture}}' 2>/dev/null)
+                if [ "$arch" = "amd64" ]; then
+                    image="$img"
+                    break
+                fi
+            done
+        fi
+        if [ -z "$image" ]; then
+            log_error "No amd64 routine image found. Please build for localhost first."
+            log_error "Run: docker build -t routine:local --platform linux/amd64 ."
             return 1
         fi
-        
+
+        log_info "Using image: $image"
+
+        # Run the container with Docker directly
+        log_info "Starting container..."
+        container_id=$(docker run -d \
+            --name "routine-local-$(date +%s)" \
+            -p 8080:3000 \
+            -v survey_storage_local:/rails/storage \
+            -e RAILS_ENV=production \
+            -e RAILS_MASTER_KEY="$RAILS_MASTER_KEY" \
+            -e SECRET_KEY_BASE="$SECRET_KEY_BASE" \
+            -e SMTP_PASSWORD="$SMTP_PASSWORD" \
+            -e SOLID_QUEUE_IN_PUMA=true \
+            -e APPLICATION_HOST=localhost \
+            "$image")
+
+        if [ -z "$container_id" ]; then
+            log_error "Failed to start Docker container"
+            return 1
+        fi
+
+        log_info "Container started: $container_id"
+
         # Wait for deployment to be ready with health check
         log_info "Waiting for localhost deployment to be ready..."
         local ready=false
         local attempts=0
         local max_attempts=30  # 30 seconds timeout
-        
+
         while [ $attempts -lt $max_attempts ] && [ "$ready" = false ]; do
             if curl -s --connect-timeout 2 --max-time 3 "http://localhost:8080/up" >/dev/null 2>&1; then
                 ready=true
@@ -361,11 +418,11 @@ Transfer ID: temp_$(date +%s)" > /storage/ACTIVE_FLAG'
                 fi
             fi
         done
-        
+
         if [ "$ready" = false ]; then
             log_error "Localhost deployment failed to become ready within ${max_attempts} seconds"
             # Check container logs for debugging
-            kamal app logs -d local --tail 20 || docker logs --tail 20 $(docker ps --format '{{.Names}}' | grep routine | head -1) || true
+            docker logs --tail 20 "$container_id" || true
             return 1
         fi
     fi
@@ -617,7 +674,7 @@ transfer_flag() {
             echo "🌍 Your app is now available at: http://localhost:8080"
             echo "✈️  Ready for travel!"
         else
-            echo "🏠 Your app is now available at: http://home.taile52c2f.ts.net"
+            echo "🏠 Your app is now available at: http://home.gila-lionfish.ts.net"
             echo "🏡 Welcome home!"
         fi
         
@@ -644,22 +701,22 @@ main() {
         "--dry-run")
             if [ -z "${2:-}" ]; then
                 log_error "Dry run requires a target host"
-                echo "Usage: $0 --dry-run [localhost|home.taile52c2f.ts.net]"
+                echo "Usage: $0 --dry-run [localhost|home.gila-lionfish.ts.net]"
                 exit 1
             fi
             dry_run_transfer "$2"
             ;;
-        "localhost"|"home.taile52c2f.ts.net")
+        "localhost"|"home.gila-lionfish.ts.net")
             transfer_flag "$1"
             ;;
         "")
             log_error "Missing target host"
-            echo "Usage: $0 [localhost|home.taile52c2f.ts.net|--status|--help]"
+            echo "Usage: $0 [localhost|home.gila-lionfish.ts.net|--status|--help]"
             exit 1
             ;;
         *)
             log_error "Invalid argument: $1"
-            echo "Valid options: localhost, home.taile52c2f.ts.net, --status, --help"
+            echo "Valid options: localhost, home.gila-lionfish.ts.net, --status, --help"
             exit 1
             ;;
     esac

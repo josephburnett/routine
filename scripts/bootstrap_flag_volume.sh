@@ -12,7 +12,7 @@
 set -e
 
 # Configuration
-PI_HOST="home.taile52c2f.ts.net"
+PI_HOST="home.gila-lionfish.ts.net"
 PI_USER="joe"
 # SSH_KEY no longer needed with Tailscale SSH
 
@@ -83,7 +83,7 @@ TRANSFER_ID="bootstrap_volume_$(date +"%Y%m%d_%H%M%S")"
 
 FLAG_CONTENT="ACTIVE_FLAG
 Created: $TIMESTAMP
-Host: home.taile52c2f.ts.net
+Host: home.gila-lionfish.ts.net
 Source: volume_bootstrap
 Transfer ID: $TRANSFER_ID"
 
