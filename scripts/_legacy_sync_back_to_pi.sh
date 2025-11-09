@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #
-# Sync Back to Pi Script
+# Sync Back to RTB Script
 #
-# This script exports your laptop database and imports it back to your Pi.
+# This script exports your laptop database and imports it back to your RTB.
 # Run this when you return home to sync any changes made while traveling.
 #
 # Usage: ./scripts/sync_back_to_pi.sh
@@ -12,14 +12,15 @@
 set -e
 
 # Configuration
-PI_HOST="home.gila-lionfish.ts.net"
-PI_USER="joe"
+RTB_HOST="rtb.gila-lionfish.ts.net"
+RTB_USER="joe"
+RTB_SSH_KEY="$HOME/.ssh/rtb.local"
 # SSH_KEY no longer needed with Tailscale SSH
 BACKUP_DIR="./tmp/laptop_backup"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-echo "🔄 Syncing laptop database back to Pi..."
-echo "Host: $PI_HOST"
+echo "🔄 Syncing laptop database back to RTB..."
+echo "Host: $RTB_HOST"
 echo "Timestamp: $TIMESTAMP"
 echo
 
@@ -34,11 +35,11 @@ if ! kamal app logs -d local &>/dev/null; then
     exit 1
 fi
 
-# Check if Pi is accessible
-echo "🔍 Checking Pi connectivity..."
-if ! ping -c 1 "$PI_HOST" &>/dev/null; then
-    echo "❌ Cannot reach Pi at $PI_HOST"
-    echo "Make sure you're on the same network and Pi is running"
+# Check if RTB is accessible
+echo "🔍 Checking RTB connectivity..."
+if ! ping -c 1 "$RTB_HOST" &>/dev/null; then
+    echo "❌ Cannot reach RTB at $RTB_HOST"
+    echo "Make sure you're on the same network and RTB is running"
     exit 1
 fi
 
@@ -109,9 +110,9 @@ fi
 
 echo "✅ Export file created: $LOCAL_EXPORT_FILE"
 
-# Create import script for Pi
+# Create import script for RTB
 cat << 'EOF' > "$BACKUP_DIR/import_script.rb"
-# Import database to Pi
+# Import database to RTB
 require 'json'
 
 export_file = ARGV[0]
@@ -123,7 +124,7 @@ end
 puts "Loading export data from #{export_file}..."
 export_data = JSON.parse(File.read(export_file))
 
-puts "Starting database import to Pi..."
+puts "Starting database import to RTB..."
 
 # Clear existing data (be careful!)
 puts "⚠️  Clearing existing data..."
@@ -174,29 +175,29 @@ end
 puts "✅ Database import completed successfully!"
 EOF
 
-# Copy files to Pi and execute import
-echo "🚀 Copying files to Pi and executing import..."
-scp "$LOCAL_EXPORT_FILE" "$PI_USER@$PI_HOST:/tmp/laptop_export.json"
-scp "$BACKUP_DIR/import_script.rb" "$PI_USER@$PI_HOST:/tmp/import_script.rb"
+# Copy files to RTB and execute import
+echo "🚀 Copying files to RTB and executing import..."
+scp "$LOCAL_EXPORT_FILE" "$RTB_USER@$RTB_HOST:/tmp/laptop_export.json"
+scp "$BACKUP_DIR/import_script.rb" "$RTB_USER@$RTB_HOST:/tmp/import_script.rb"
 
-# Execute the import script via Kamal on Pi
-ssh "$PI_USER@$PI_HOST" << 'EOF'
+# Execute the import script via Kamal on RTB
+ssh -i "$RTB_SSH_KEY" "$RTB_USER@$RTB_HOST" << 'EOF'
 cd ~/routine
 kamal app exec --interactive --reuse "cp /tmp/import_script.rb /rails/ && cp /tmp/laptop_export.json /rails/ && bin/rails runner /rails/import_script.rb /rails/laptop_export.json"
 EOF
 
-# Clean up temporary files on Pi
-ssh "$PI_USER@$PI_HOST" "rm -f /tmp/laptop_export.json /tmp/import_script.rb"
+# Clean up temporary files on RTB
+ssh -i "$RTB_SSH_KEY" "$RTB_USER@$RTB_HOST" "rm -f /tmp/laptop_export.json /tmp/import_script.rb"
 
 echo
-echo "✅ Database synced back to Pi successfully!"
+echo "✅ Database synced back to RTB successfully!"
 echo
 echo "📋 Summary:"
 echo "- Exported data from laptop deployment"
-echo "- Imported data to Pi deployment"
+echo "- Imported data to RTB deployment"
 echo "- Cleaned up temporary files"
 echo
-echo "🎉 Your Pi now has all the data from your laptop travels!"
+echo "🎉 Your RTB now has all the data from your laptop travels!"
 echo
 
 # Clean up local files

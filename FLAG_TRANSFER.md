@@ -1,6 +1,6 @@
 # Flag Transfer System
 
-The Flag Transfer System ensures only one deployment (Pi or laptop) runs at a time, preventing data conflicts when switching between locations. Think of it as "transferring your digital flag" between deployments.
+The Flag Transfer System ensures only one deployment (RTB or laptop) runs at a time, preventing data conflicts when switching between locations. Think of it as "transferring your digital flag" between deployments.
 
 # Part 1: User Guide
 
@@ -20,8 +20,8 @@ The Flag Transfer System ensures only one deployment (Pi or laptop) runs at a ti
 # Transfer flag to laptop (for travel)
 ./scripts/transfer_flag.sh localhost
 
-# Transfer flag back to Pi (returning home)
-./scripts/transfer_flag.sh home.gila-lionfish.ts.net
+# Transfer flag back to RTB (returning home)
+./scripts/transfer_flag.sh rtb.gila-lionfish.ts.net
 
 # Preview what would happen (no changes made)
 ./scripts/transfer_flag.sh --dry-run localhost
@@ -38,21 +38,21 @@ The Flag Transfer System ensures only one deployment (Pi or laptop) runs at a ti
 ./scripts/transfer_flag.sh localhost
 
 # Verify transfer succeeded
-curl http://localhost:3000/up
+curl http://localhost:8080/up
 ```
 
 ### ✈️ While Traveling
-- Use your laptop deployment at `http://localhost:3000`
+- Use your laptop deployment at `http://localhost:8080`
 - Make changes, add data, etc. normally
-- Your Pi deployment is safely shutdown with no flag
+- Your RTB deployment is safely shutdown with no flag
 
 ### 🏠 Returning Home
 ```bash
-# Transfer back to Pi
-./scripts/transfer_flag.sh home.gila-lionfish.ts.net
+# Transfer back to RTB
+./scripts/transfer_flag.sh rtb.gila-lionfish.ts.net
 
 # Verify transfer succeeded  
-curl http://home.gila-lionfish.ts.net:3000/up
+curl http://rtb.gila-lionfish.ts.net:10001/up
 ```
 
 ## How It Works
@@ -83,7 +83,7 @@ This shouldn't happen but can occur if a transfer fails partially:
 ./scripts/transfer_flag.sh --status
 
 # Remove flag from the deployment that shouldn't have it
-kamal app exec --reuse "bin/rails flag:remove"           # Pi
+kamal app exec --reuse "bin/rails flag:remove"           # RTB
 kamal app exec -d local --reuse "bin/rails flag:remove"  # Laptop
 ```
 
@@ -91,7 +91,7 @@ kamal app exec -d local --reuse "bin/rails flag:remove"  # Laptop
 If no deployment has the flag (system is "broken"):
 ```bash
 # Force create flag on the deployment with the correct data
-kamal app exec --reuse "bin/rails flag:force_create[emergency_restore]"      # Pi
+kamal app exec --reuse "bin/rails flag:force_create[emergency_restore]"      # RTB
 kamal app exec -d local --reuse "bin/rails flag:force_create[emergency_restore]"  # Laptop
 ```
 
@@ -99,7 +99,7 @@ kamal app exec -d local --reuse "bin/rails flag:force_create[emergency_restore]"
 This is the safety system working correctly:
 ```bash
 # Don't bypass this - instead transfer the flag properly
-./scripts/transfer_flag.sh localhost    # Or home.gila-lionfish.ts.net
+./scripts/transfer_flag.sh localhost    # Or rtb.gila-lionfish.ts.net
 ```
 
 ### Transfer fails midway
@@ -110,7 +110,7 @@ The script includes automatic rollback, but if that fails:
 
 # Manual recovery options:
 # 1. Restart original deployment
-kamal app start                     # Pi
+kamal app start                     # RTB
 kamal app start -d local           # Laptop
 
 # 2. Force create flag on working deployment
@@ -122,8 +122,8 @@ kamal app exec --reuse "bin/rails flag:force_create[manual_recovery]"
 When you run `./scripts/transfer_flag.sh --status`:
 
 ### Normal States
-- **Pi: PRESENT**, Laptop: MISSING = Pi is active (normal home state)
-- **Pi: MISSING**, Laptop: PRESENT = Laptop is active (normal travel state)
+- **RTB: PRESENT**, Laptop: MISSING = RTB is active (normal home state)
+- **RTB: MISSING**, Laptop: PRESENT = Laptop is active (normal travel state)
 
 ### Problem States  
 - **Both: PRESENT** = Conflict! Both think they're active
@@ -149,7 +149,7 @@ When you run `./scripts/transfer_flag.sh --status`:
 2. **Flag Validation**: Rails initializer that checks for flag presence at startup
 3. **Transfer Script**: Orchestrates atomic flag transfers between deployments
 4. **Database Sync**: Exports/imports data during transfers
-5. **Docker Integration**: Uses Docker commands directly for Pi operations
+5. **Docker Integration**: Uses Docker commands directly for RTB operations
 
 ### File Structure
 
@@ -158,7 +158,7 @@ scripts/
 ├── transfer_flag.sh           # Main transfer orchestrator
 ├── _export_database.sh        # Database export helper (internal)
 ├── _import_database.sh        # Database import helper (internal)
-├── bootstrap_flag_on_pi.sh    # Manual flag creation on existing Pi
+├── bootstrap_flag_on_pi.sh    # Manual flag creation on existing RTB
 └── bootstrap_flag_volume.sh   # Create flag directly in Docker volume
 
 config/initializers/
@@ -191,9 +191,9 @@ end
 
 ## Docker vs Kamal Command Translation
 
-**Problem**: Pi doesn't have Kamal installed locally, but transfer script runs commands via SSH.
+**Problem**: RTB doesn't have Kamal installed locally, but transfer script runs commands via SSH.
 
-**Solution**: Use Docker commands directly for Pi operations:
+**Solution**: Use Docker commands directly for RTB operations:
 
 | Kamal Command | Docker Equivalent |
 |---------------|------------------|
@@ -205,7 +205,7 @@ end
 ### Container Discovery Pattern
 
 ```bash
-# Find routine container on Pi
+# Find routine container on RTB
 pi_get_container() {
     ssh -i "$SSH_KEY" "$PI_USER@$PI_HOST" \
         "docker ps --format '{{.Names}}' | grep routine" 2>/dev/null | head -1
@@ -233,11 +233,11 @@ pi_rails_exec() {
 
 **Debug Steps**:
 ```bash
-# Test Pi connection
-ssh -i ~/.ssh/home.gila-lionfish.ts.net joe@home.gila-lionfish.ts.net "docker ps | grep routine"
+# Test RTB connection
+ssh -i ~/.ssh/rtb.local joe@rtb.gila-lionfish.ts.net "docker ps | grep routine"
 
 # Test Rails command directly
-ssh -i ~/.ssh/home.gila-lionfish.ts.net joe@home.gila-lionfish.ts.net \
+ssh -i ~/.ssh/rtb.local joe@rtb.gila-lionfish.ts.net \
     "docker exec CONTAINER_NAME bin/rails flag:status"
 
 # Test grep pattern
@@ -247,13 +247,13 @@ echo "✅ Flag is PRESENT" | grep -q "Flag is PRESENT" && echo "MATCH"
 **Common Fixes**:
 - Remove `log_info` calls from inside `check_flag_status()` function
 - Ensure function only outputs final status (PRESENT/MISSING/OFFLINE)
-- Fix SSH key permissions: `chmod 600 ~/.ssh/home.gila-lionfish.ts.net`
+- Fix SSH key permissions: `chmod 600 ~/.ssh/rtb.local`
 
 ### 2. "kamal: command not found" Errors
 
 **Symptoms**: Transfer fails with "bash: line 1: kamal: command not found"
 
-**Root Cause**: Scripts trying to run Kamal commands on Pi via SSH, but Pi doesn't have Kamal installed.
+**Root Cause**: Scripts trying to run Kamal commands on RTB via SSH, but RTB doesn't have Kamal installed.
 
 **Fix**: Update scripts to use Docker commands directly.
 
@@ -278,11 +278,11 @@ kamal app exec --reuse "bin/rails flag:force_create['Bootstrap reason']"
 **Debug Export**:
 ```bash
 # Test export manually
-ssh -i ~/.ssh/home.gila-lionfish.ts.net joe@home.gila-lionfish.ts.net \
+ssh -i ~/.ssh/rtb.local joe@rtb.gila-lionfish.ts.net \
     "docker exec CONTAINER_NAME bin/rails db:sync:export"
 
 # Check export file location
-ssh -i ~/.ssh/home.gila-lionfish.ts.net joe@home.gila-lionfish.ts.net \
+ssh -i ~/.ssh/rtb.local joe@rtb.gila-lionfish.ts.net \
     "ls -la ~/routine/tmp/db_sync/"
 ```
 
@@ -294,7 +294,7 @@ kamal app exec -d local --reuse "bin/rails db:sync:import[/path/to/export.json]"
 
 ## Environment Requirements
 
-### Pi Requirements
+### RTB Requirements
 - Docker installed and running
 - SSH access with key authentication
 - No Kamal installation required (uses Docker directly)
@@ -306,7 +306,7 @@ kamal app exec -d local --reuse "bin/rails db:sync:import[/path/to/export.json]"
 - Local deployment configuration in `config/deploy.local.yml`
 
 ### Network Requirements
-- Pi accessible at `home.gila-lionfish.ts.net` from laptop
+- RTB accessible at `rtb.gila-lionfish.ts.net` from laptop
 - SSH connectivity on standard port
 - Sufficient bandwidth for database transfer
 
@@ -314,17 +314,17 @@ kamal app exec -d local --reuse "bin/rails db:sync:import[/path/to/export.json]"
 
 The system uses two separate deployment configurations:
 
-- `config/deploy.yml` - Default configuration for Raspberry Pi deployment
+- `config/deploy.yml` - Default configuration for Raspberry RTB deployment
 - `config/deploy.local.yml` - Local laptop deployment configuration
 
 Key differences:
 
-| Aspect | Pi Deployment | Local Deployment |
+| Aspect | RTB Deployment | Local Deployment |
 |--------|---------------|------------------|
-| Host | home.gila-lionfish.ts.net | localhost |
+| Host | rtb.gila-lionfish.ts.net | localhost |
 | Architecture | ARM v7 | AMD64 |
 | SSH User | joe | current user |
-| SSH Key | ~/.ssh/home.gila-lionfish.ts.net | default |
+| SSH Key | ~/.ssh/rtb.local | default |
 | Volume | survey_storage | survey_storage_local |
 
 ## Recovery Procedures
@@ -355,7 +355,7 @@ kamal app exec -d local --reuse "bin/rails db:sync:import[/path/to/export.json]"
 
 ## Security Considerations
 
-- **SSH Keys**: Private key `~/.ssh/home.gila-lionfish.ts.net` must have correct permissions (600)
+- **SSH Keys**: Private key `~/.ssh/rtb.local` must have correct permissions (600)
 - **Flag Authority**: Flag file grants deployment authorization - protect access
 - **Database Transfer**: Export files contain full database - clean up after transfer
 - **Container Access**: Direct Docker commands bypass Kamal security features

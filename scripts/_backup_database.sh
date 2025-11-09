@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #
-# Backup Pi Database Script
+# Backup RTB Database Script
 # 
-# This script exports the database from your Raspberry Pi to prepare for travel.
+# This script exports the database from your Raspberry RTB to prepare for travel.
 # Run this BEFORE leaving home to get the latest data for your laptop.
 #
 # Usage: ./scripts/backup_pi_database.sh
@@ -12,28 +12,29 @@
 set -e
 
 # Configuration
-PI_HOST="home.gila-lionfish.ts.net"
-PI_USER="joe"
+RTB_HOST="rtb.gila-lionfish.ts.net"
+RTB_USER="joe"
+RTB_SSH_KEY="$HOME/.ssh/rtb.local"
 # SSH_KEY no longer needed with Tailscale SSH
 BACKUP_DIR="./tmp/pi_backup"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-echo "🥧 Backing up database from Raspberry Pi..."
-echo "Host: $PI_HOST"
+echo "🥧 Backing up database from Raspberry RTB..."
+echo "Host: $RTB_HOST"
 echo "Timestamp: $TIMESTAMP"
 echo
 
 # Create backup directory
 mkdir -p "$BACKUP_DIR"
 
-# Function to run kamal commands on Pi
+# Function to run kamal commands on RTB
 run_kamal_on_pi() {
     echo "📋 Running: kamal $*"
     kamal "$@"
 }
 
-# Create database export via Rails console on Pi
-echo "📦 Creating database export on Pi..."
+# Create database export via Rails console on RTB
+echo "📦 Creating database export on RTB..."
 cat << 'EOF' > "$BACKUP_DIR/export_script.rb"
 # Create a database export for travel
 require 'json'
@@ -79,32 +80,32 @@ puts "Export completed: #{export_file}"
 puts "Total size: #{File.size(export_file)} bytes"
 EOF
 
-# Copy script to Pi and execute via Kamal
-echo "🚀 Executing export script on Pi..."
-scp "$BACKUP_DIR/export_script.rb" "$PI_USER@$PI_HOST:/tmp/export_script.rb"
+# Copy script to RTB and execute via Kamal
+echo "🚀 Executing export script on RTB..."
+scp "$BACKUP_DIR/export_script.rb" "$RTB_USER@$RTB_HOST:/tmp/export_script.rb"
 
 # Execute the export script via Kamal console
-ssh "$PI_USER@$PI_HOST" << 'EOF'
+ssh -i "$RTB_SSH_KEY" "$RTB_USER@$RTB_HOST" << 'EOF'
 cd ~/routine
 kamal app exec --interactive --reuse "cp /tmp/export_script.rb /rails/ && bin/rails runner /rails/export_script.rb"
 EOF
 
 # Find and download the export file
-echo "📥 Downloading export file from Pi..."
-EXPORT_FILE=$(ssh "$PI_USER@$PI_HOST" "ls -t /home/joe/routine/storage/db_export_*.json | head -1")
+echo "📥 Downloading export file from RTB..."
+EXPORT_FILE=$(ssh -i "$RTB_SSH_KEY" "$RTB_USER@$RTB_HOST" "ls -t /home/joe/routine/storage/db_export_*.json | head -1")
 
 if [ -z "$EXPORT_FILE" ]; then
-    echo "❌ No export file found on Pi!"
+    echo "❌ No export file found on RTB!"
     exit 1
 fi
 
 # Download the export file
 LOCAL_EXPORT_FILE="$BACKUP_DIR/db_export_$TIMESTAMP.json"
-scp "$PI_USER@$PI_HOST:$EXPORT_FILE" "$LOCAL_EXPORT_FILE"
+scp "$RTB_USER@$RTB_HOST:$EXPORT_FILE" "$LOCAL_EXPORT_FILE"
 
 # Also copy the actual SQLite files as backup
 echo "📁 Copying SQLite database files..."
-scp "$PI_USER@$PI_HOST:~/routine/storage/production*.sqlite3" "$BACKUP_DIR/" || true
+scp "$RTB_USER@$RTB_HOST:~/routine/storage/production*.sqlite3" "$BACKUP_DIR/" || true
 
 echo
 echo "✅ Backup completed successfully!"

@@ -1,17 +1,18 @@
 #!/bin/bash
 
 #
-# Deploy to Raspberry Pi using direct SSH push (no Docker registry)
+# Deploy to RTB server using direct SSH push (no Docker registry)
 #
 # This script:
-# 1. Builds the Docker image locally for arm/v7 architecture
-# 2. Pushes the image directly to the Pi via SSH using docker-pussh (unregistry)
-# 3. Deploys the container on the Pi using Kamal
+# 1. Builds the Docker image locally for amd64 architecture
+# 2. Pushes the image directly to RTB via SSH using docker-pussh (unregistry)
+# 3. Deploys the container on RTB using Kamal
 #
 # Requirements:
 # - docker-pussh installed locally (see README)
-# - SSH access to Pi via Tailscale (joe@home.gila-lionfish.ts.net)
-# - User joe must be in docker group on Pi
+# - SSH access to RTB via Tailscale (joe@rtb.gila-lionfish.ts.net)
+# - SSH key at ~/.ssh/rtb.local
+# - User joe must be in docker group on RTB
 # - 1Password CLI signed in (for secrets)
 #
 
@@ -38,17 +39,17 @@ IMAGE_NAME="localhost/routine:${VERSION}"
 # Note: We build as localhost/routine but Kamal expects just "routine"
 # because it will prepend the registry server (localhost) automatically
 
-echo "🔨 Building image for arm/v7 (version: ${VERSION})..."
-docker buildx build --platform linux/arm/v7 -t "${IMAGE_NAME}" --load .
+echo "🔨 Building image for amd64 (version: ${VERSION})..."
+docker buildx build --platform linux/amd64 -t "${IMAGE_NAME}" --load .
 
 echo ""
-echo "📤 Pushing image to Pi via SSH (docker pussh)..."
-docker pussh "${IMAGE_NAME}" joe@home.gila-lionfish.ts.net
+echo "📤 Pushing image to RTB via SSH (docker pussh)..."
+docker pussh -i ~/.ssh/rtb.local "${IMAGE_NAME}" joe@rtb.gila-lionfish.ts.net
 
 echo ""
-echo "🚀 Deploying on Pi..."
+echo "🚀 Deploying on RTB..."
 kamal app boot --version="${VERSION}"
 
 echo ""
 echo "✅ Deployment complete!"
-echo "🏠 Your app is now available at: http://home.gila-lionfish.ts.net"
+echo "🏠 Your app is now available at: http://rtb.gila-lionfish.ts.net:10001"

@@ -6,19 +6,20 @@
 # This script imports a complete database using SQLite's native .read command
 # which restores ALL data atomically - safer than application-level imports.
 #
-# Usage: ./_import_database_v2.sh [home.gila-lionfish.ts.net|localhost] [input_file]
+# Usage: ./_import_database_v2.sh [rtb.gila-lionfish.ts.net|localhost] [input_file]
 #
 
 set -e
 
 HOST=$1
 INPUT_FILE=$2
-PI_HOST="home.gila-lionfish.ts.net"
-PI_USER="joe"
+RTB_HOST="rtb.gila-lionfish.ts.net"
+RTB_USER="joe"
+RTB_SSH_KEY="$HOME/.ssh/rtb.local"
 # SSH_KEY no longer needed with Tailscale SSH
 
 if [ -z "$HOST" ] || [ -z "$INPUT_FILE" ]; then
-    echo "Usage: $0 [home.gila-lionfish.ts.net|localhost] [input_file]"
+    echo "Usage: $0 [rtb.gila-lionfish.ts.net|localhost] [input_file]"
     exit 1
 fi
 
@@ -40,13 +41,14 @@ fi
 create_temp_flag() {
     local host=$1
     local reason="temp_for_import_$(date +%s)"
-    
-    if [ "$host" = "$PI_HOST" ]; then
-        ssh "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) sh -c 'echo \"ACTIVE_FLAG
+
+    if [ "$host" = "$RTB_HOST" ]; then
+        # Write flag directly to volume (container may be stopped/restarting)
+        ssh -i "$RTB_SSH_KEY" "$RTB_USER@$host" "docker run --rm -v survey_storage:/storage alpine sh -c 'echo \"ACTIVE_FLAG
 Created: \$(date -Iseconds)
 Host: $host
 Source: $reason
-Transfer ID: $reason\" > /rails/storage/ACTIVE_FLAG'"
+Transfer ID: $reason\" > /storage/ACTIVE_FLAG'"
     elif [ "$host" = "localhost" ]; then
         # For localhost, write flag via volume to avoid permission issues
         docker run --rm -v survey_storage_local:/storage alpine sh -c "echo \"ACTIVE_FLAG
@@ -60,31 +62,32 @@ Transfer ID: $reason\" > /storage/ACTIVE_FLAG"
 # Function to remove flag
 remove_flag() {
     local host=$1
-    
-    if [ "$host" = "$PI_HOST" ]; then
-        ssh "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) rm -f /rails/storage/ACTIVE_FLAG" || true
+
+    if [ "$host" = "$RTB_HOST" ]; then
+        # Remove flag directly from volume (container may be stopped/restarting)
+        ssh -i "$RTB_SSH_KEY" "$RTB_USER@$host" "docker run --rm -v survey_storage:/storage alpine rm -f /storage/ACTIVE_FLAG" || true
     elif [ "$host" = "localhost" ]; then
         # For localhost, remove flag via volume to avoid permission issues
         docker run --rm -v survey_storage_local:/storage alpine rm -f /storage/ACTIVE_FLAG || true
     fi
 }
 
-if [ "$HOST" = "$PI_HOST" ]; then
-    # Import to Pi using SSH
-    echo "🔗 Uploading to Pi via SSH..."
+if [ "$HOST" = "$RTB_HOST" ]; then
+    # Import to RTB using SSH
+    echo "🔗 Uploading to RTB via SSH..."
     
-    # Create temporary import file on Pi
+    # Create temporary import file on RTB
     temp_import="/tmp/db_import_$(date +%Y%m%d_%H%M%S).sql"
     
-    # Copy import file to Pi
-    scp "$INPUT_FILE" "$PI_USER@$HOST:$temp_import"
-    
+    # Copy import file to RTB
+    scp -i "$RTB_SSH_KEY" "$INPUT_FILE" "$RTB_USER@$HOST:$temp_import"
+
     # Get container name
-    container_name=$(ssh "$PI_USER@$HOST" "docker ps --format '{{.Names}}' | grep routine | head -1")
+    container_name=$(ssh -i "$RTB_SSH_KEY" "$RTB_USER@$HOST" "docker ps --format '{{.Names}}' | grep routine | head -1")
     
     if [ -z "$container_name" ]; then
-        echo "❌ No running routine container found on Pi"
-        ssh "$PI_USER@$HOST" "rm -f $temp_import"
+        echo "❌ No running routine container found on RTB"
+        ssh -i "$RTB_SSH_KEY" "$RTB_USER@$HOST" "rm -f $temp_import"
         exit 1
     fi
     
@@ -95,30 +98,30 @@ if [ "$HOST" = "$PI_HOST" ]; then
     # Backup current database before import
     backup_file="/tmp/db_backup_before_import_$(date +%Y%m%d_%H%M%S).sql"
     echo "💾 Creating backup before import..."
-    ssh "$PI_USER@$HOST" "docker exec $container_name sqlite3 /rails/storage/production.sqlite3 '.dump'" > "./backups/pi_backup_before_import_$(date +%Y%m%d_%H%M%S).sql"
+    ssh -i "$RTB_SSH_KEY" "$RTB_USER@$HOST" "docker exec $container_name sqlite3 /rails/storage/production.sqlite3 '.dump'" > "./backups/pi_backup_before_import_$(date +%Y%m%d_%H%M%S).sql"
     
     # Copy import file into container and import database
     echo "📥 Importing database (this will replace all existing data)..."
-    ssh "$PI_USER@$HOST" "docker cp $temp_import $container_name:/tmp/db_import.sql"
-    ssh "$PI_USER@$HOST" "docker exec $container_name sh -c 'rm -f /rails/storage/production.sqlite3 && sqlite3 /rails/storage/production.sqlite3 < /tmp/db_import.sql'"
+    ssh -i "$RTB_SSH_KEY" "$RTB_USER@$HOST" "docker cp $temp_import $container_name:/tmp/db_import.sql"
+    ssh -i "$RTB_SSH_KEY" "$RTB_USER@$HOST" "docker exec $container_name sh -c 'rm -f /rails/storage/production.sqlite3 && sqlite3 /rails/storage/production.sqlite3 < /tmp/db_import.sql'"
     
     if [ $? -eq 0 ]; then
         echo "✅ Database imported successfully"
         
         # Verify import by checking record counts
-        record_count=$(ssh "$PI_USER@$HOST" "docker exec $container_name sqlite3 /rails/storage/production.sqlite3 'SELECT COUNT(*) FROM sqlite_master WHERE type=\"table\";'" 2>/dev/null || echo "0")
+        record_count=$(ssh -i "$RTB_SSH_KEY" "$RTB_USER@$HOST" "docker exec $container_name sqlite3 /rails/storage/production.sqlite3 'SELECT COUNT(*) FROM sqlite_master WHERE type=\"table\";'" 2>/dev/null || echo "0")
         echo "✅ Import verification: $record_count tables found"
         
         # Clean up temporary files
-        ssh "$PI_USER@$HOST" "rm -f $temp_import"
-        ssh "$PI_USER@$HOST" "docker exec $container_name rm -f /tmp/db_import.sql" || true
+        ssh -i "$RTB_SSH_KEY" "$RTB_USER@$HOST" "rm -f $temp_import"
+        ssh -i "$RTB_SSH_KEY" "$RTB_USER@$HOST" "docker exec $container_name rm -f /tmp/db_import.sql" || true
         
         # Remove temporary flag (will be recreated properly by transfer script)
         remove_flag "$HOST"
     else
         echo "❌ Database import failed"
-        ssh "$PI_USER@$HOST" "rm -f $temp_import"
-        ssh "$PI_USER@$HOST" "docker exec $container_name rm -f /tmp/db_import.sql" || true
+        ssh -i "$RTB_SSH_KEY" "$RTB_USER@$HOST" "rm -f $temp_import"
+        ssh -i "$RTB_SSH_KEY" "$RTB_USER@$HOST" "docker exec $container_name rm -f /tmp/db_import.sql" || true
         remove_flag "$HOST"
         exit 1
     fi

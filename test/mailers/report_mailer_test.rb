@@ -6,7 +6,7 @@ class ReportMailerTest < ActionMailer::TestCase
     mail = ReportMailer.scheduled_report(report)
     assert_equal "Routine Report: #{report.name}", mail.subject
     assert_equal [ report.user.email ], mail.to
-    assert_equal [ "routine@home.gila-lionfish.ts.net" ], mail.from
+    assert_equal [ "routine@rtb.gila-lionfish.ts.net" ], mail.from
     assert_match report.name, mail.body.encoded
   end
 end

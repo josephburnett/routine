@@ -23,10 +23,10 @@
 set -e
 
 # Configuration
-PI_HOST="home.gila-lionfish.ts.net"
+RTB_HOST="rtb.gila-lionfish.ts.net"
 LAPTOP_HOST="localhost"
-PI_USER="joe"
-# SSH_KEY no longer needed with Tailscale SSH
+RTB_USER="joe"
+RTB_SSH_KEY="$HOME/.ssh/rtb.local"
 BACKUP_DIR="./tmp/flag_transfer"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
@@ -48,12 +48,12 @@ show_help() {
     cat << EOF
 🏁 Robust Flag Transfer System v2
 
-Transfer the active flag between your Pi (home.gila-lionfish.ts.net) and laptop (localhost).
+Transfer the active flag between your RTB server (rtb.gila-lionfish.ts.net) and laptop (localhost).
 Only one deployment can hold the flag at a time to prevent data conflicts.
 
 Usage:
-  $0 localhost         Transfer flag from Pi to laptop (for travel)
-  $0 home.gila-lionfish.ts.net        Transfer flag from laptop to Pi (returning home)
+  $0 localhost         Transfer flag from RTB to laptop (for travel)
+  $0 rtb.gila-lionfish.ts.net        Transfer flag from laptop to RTB (returning home)
   $0 --status          Check current flag status on both deployments
   $0 --dry-run TARGET  Preview what would happen without making changes
   $0 --help            Show this help message
@@ -75,8 +75,8 @@ check_deployment_status() {
     
     if [ "$host" = "localhost" ]; then
         url="http://localhost:8080/up"
-    elif [ "$host" = "$PI_HOST" ]; then
-        url="http://home.gila-lionfish.ts.net/up"
+    elif [ "$host" = "$RTB_HOST" ]; then
+        url="http://rtb.gila-lionfish.ts.net:10001/up"
     else
         echo "ERROR"
         return
@@ -119,10 +119,10 @@ check_flag_status() {
         else
             echo "OFFLINE"
         fi
-    elif [ "$host" = "$PI_HOST" ]; then
-        # For Pi, check via SSH
+    elif [ "$host" = "$RTB_HOST" ]; then
+        # For RTB, check via SSH
         local flag_output
-        flag_output=$(ssh "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) bin/rails flag:status" 2>&1 || echo "ERROR")
+        flag_output=$(ssh -i "$RTB_SSH_KEY" "$RTB_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) bin/rails flag:status" 2>&1 || echo "ERROR")
         if echo "$flag_output" | grep -q "Flag is PRESENT"; then
             echo "PRESENT"
         elif echo "$flag_output" | grep -q "Flag is MISSING"; then
@@ -139,14 +139,14 @@ show_status() {
     echo "=================================================="
     echo
     
-    # Check Pi status
-    log_info "Raspberry Pi ($PI_HOST):"
-    pi_deployment_status=$(check_deployment_status "$PI_HOST")
-    pi_flag_status=$(check_flag_status "$PI_HOST")
+    # Check RTB status
+    log_info "RTB Server ($RTB_HOST):"
+    rtb_deployment_status=$(check_deployment_status "$RTB_HOST")
+    rtb_flag_status=$(check_flag_status "$RTB_HOST")
     
-    case $pi_deployment_status in
+    case $rtb_deployment_status in
         "RUNNING")
-            case $pi_flag_status in
+            case $rtb_flag_status in
                 "PRESENT") log_success "  ✅ ACTIVE - Running with flag" ;;
                 "MISSING") log_info "  🔒 SAFE - Running without flag (standby mode)" ;;
                 "ERROR") log_info "  🔒 SAFE - Running without flag (standby mode)" ;;
@@ -179,7 +179,7 @@ show_status() {
     local active_count=0
     local danger_count=0
     
-    if [ "$pi_deployment_status" = "RUNNING" ] && [ "$pi_flag_status" = "PRESENT" ]; then
+    if [ "$rtb_deployment_status" = "RUNNING" ] && [ "$rtb_flag_status" = "PRESENT" ]; then
         active_count=$((active_count + 1))
     fi
     if [ "$laptop_deployment_status" = "RUNNING" ] && [ "$laptop_flag_status" = "PRESENT" ]; then
@@ -188,17 +188,17 @@ show_status() {
     # Note: "Running without flag" is now considered safe standby mode, not dangerous
     
     if [ $active_count -eq 1 ] && [ $danger_count -eq 0 ]; then
-        if [ "$pi_flag_status" = "PRESENT" ] && [ "$pi_deployment_status" = "RUNNING" ]; then
+        if [ "$rtb_flag_status" = "PRESENT" ] && [ "$rtb_deployment_status" = "RUNNING" ]; then
             if [ "$laptop_deployment_status" = "OFFLINE" ]; then
-                log_success "🔒 SAFE: Pi is active, laptop is offline"
+                log_success "🔒 SAFE: RTB is active, laptop is offline"
             else
-                log_success "🔒 SAFE: Pi is active, laptop is in standby"
+                log_success "🔒 SAFE: RTB is active, laptop is in standby"
             fi
         elif [ "$laptop_flag_status" = "PRESENT" ] && [ "$laptop_deployment_status" = "RUNNING" ]; then
-            if [ "$pi_deployment_status" = "OFFLINE" ]; then
-                log_success "🔒 SAFE: Laptop is active, Pi is offline"
+            if [ "$rtb_deployment_status" = "OFFLINE" ]; then
+                log_success "🔒 SAFE: Laptop is active, RTB is offline"
             else
-                log_success "🔒 SAFE: Laptop is active, Pi is in standby"
+                log_success "🔒 SAFE: Laptop is active, RTB is in standby"
             fi
         fi
     elif [ $active_count -gt 1 ]; then
@@ -247,8 +247,8 @@ validate_transfer() {
 get_record_count() {
     local host=$1
     
-    if [ "$host" = "$PI_HOST" ]; then
-        ssh "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) sqlite3 /rails/storage/production.sqlite3 \"SELECT COUNT(*) FROM (SELECT 'users' as table_name, COUNT(*) as cnt FROM users UNION ALL SELECT 'forms', COUNT(*) FROM forms UNION ALL SELECT 'sections', COUNT(*) FROM sections UNION ALL SELECT 'questions', COUNT(*) FROM questions UNION ALL SELECT 'responses', COUNT(*) FROM responses UNION ALL SELECT 'answers', COUNT(*) FROM answers UNION ALL SELECT 'metrics', COUNT(*) FROM metrics UNION ALL SELECT 'alerts', COUNT(*) FROM alerts UNION ALL SELECT 'reports', COUNT(*) FROM reports UNION ALL SELECT 'dashboards', COUNT(*) FROM dashboards);\"" 2>/dev/null | tail -1 || echo "0"
+    if [ "$host" = "$RTB_HOST" ]; then
+        ssh -i "$RTB_SSH_KEY" "$RTB_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) sqlite3 /rails/storage/production.sqlite3 \"SELECT COUNT(*) FROM (SELECT 'users' as table_name, COUNT(*) as cnt FROM users UNION ALL SELECT 'forms', COUNT(*) FROM forms UNION ALL SELECT 'sections', COUNT(*) FROM sections UNION ALL SELECT 'questions', COUNT(*) FROM questions UNION ALL SELECT 'responses', COUNT(*) FROM responses UNION ALL SELECT 'answers', COUNT(*) FROM answers UNION ALL SELECT 'metrics', COUNT(*) FROM metrics UNION ALL SELECT 'alerts', COUNT(*) FROM alerts UNION ALL SELECT 'reports', COUNT(*) FROM reports UNION ALL SELECT 'dashboards', COUNT(*) FROM dashboards);\"" 2>/dev/null | tail -1 || echo "0"
     elif [ "$host" = "localhost" ]; then
         local container_name=$(docker ps --format '{{.Names}}' | grep routine | head -1)
         if [ -n "$container_name" ]; then
@@ -267,15 +267,15 @@ shutdown_deployment() {
     
     log_info "Shutting down $host deployment..."
     
-    if [ "$host" = "$PI_HOST" ]; then
-        # Shutdown Pi container
+    if [ "$host" = "$RTB_HOST" ]; then
+        # Shutdown RTB container
         local container_name
-        container_name=$(ssh "$PI_USER@$host" "docker ps --format '{{.Names}}' | grep routine | head -1" 2>/dev/null)
+        container_name=$(ssh -i "$RTB_SSH_KEY" "$RTB_USER@$host" "docker ps --format '{{.Names}}' | grep routine | head -1" 2>/dev/null)
         if [ -n "$container_name" ]; then
-            ssh "$PI_USER@$host" "docker stop $container_name" || log_warning "Failed to stop Pi container"
-            log_success "Pi deployment shutdown"
+            ssh -i "$RTB_SSH_KEY" "$RTB_USER@$host" "docker stop $container_name" || log_warning "Failed to stop RTB container"
+            log_success "RTB deployment shutdown"
         else
-            log_info "Pi deployment already offline"
+            log_info "RTB deployment already offline"
         fi
     elif [ "$host" = "localhost" ]; then
         # Shutdown localhost container
@@ -296,20 +296,20 @@ start_deployment() {
     
     log_info "Starting $host deployment..."
     
-    if [ "$host" = "$PI_HOST" ]; then
-        # Start Pi container
+    if [ "$host" = "$RTB_HOST" ]; then
+        # Start RTB container
         local container_name
-        container_name=$(ssh "$PI_USER@$host" "docker ps -a --format '{{.Names}}' | grep routine | head -1" 2>/dev/null)
+        container_name=$(ssh -i "$RTB_SSH_KEY" "$RTB_USER@$host" "docker ps -a --format '{{.Names}}' | grep routine | head -1" 2>/dev/null)
         if [ -n "$container_name" ]; then
-            ssh "$PI_USER@$host" "docker start $container_name" || log_warning "Failed to start Pi container"
+            ssh -i "$RTB_SSH_KEY" "$RTB_USER@$host" "docker start $container_name" || log_warning "Failed to start RTB container"
             sleep 5  # Give container time to start
             if [ "$(check_deployment_status "$host")" = "RUNNING" ]; then
-                log_success "Pi deployment started"
+                log_success "RTB deployment started"
             else
-                log_warning "Pi deployment may not be fully ready"
+                log_warning "RTB deployment may not be fully ready"
             fi
         else
-            log_error "No Pi container found to start"
+            log_error "No RTB container found to start"
             return 1
         fi
     elif [ "$host" = "localhost" ]; then
@@ -442,9 +442,9 @@ Host: $host
 Source: $source_host
 Transfer ID: $transfer_id"
     
-    if [ "$host" = "$PI_HOST" ]; then
-        ssh "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) sh -c 'echo \"$flag_content\" > /rails/storage/ACTIVE_FLAG'" || {
-            log_error "Failed to create flag on Pi"
+    if [ "$host" = "$RTB_HOST" ]; then
+        ssh -i "$RTB_SSH_KEY" "$RTB_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) sh -c 'echo \"$flag_content\" > /rails/storage/ACTIVE_FLAG'" || {
+            log_error "Failed to create flag on RTB"
             return 1
         }
     elif [ "$host" = "localhost" ]; then
@@ -469,8 +469,8 @@ remove_flag() {
     
     log_info "Removing flag from $host..."
     
-    if [ "$host" = "$PI_HOST" ]; then
-        ssh "$PI_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) rm -f /rails/storage/ACTIVE_FLAG" || log_warning "Failed to remove flag from Pi"
+    if [ "$host" = "$RTB_HOST" ]; then
+        ssh -i "$RTB_SSH_KEY" "$RTB_USER@$host" "docker exec \$(docker ps --format '{{.Names}}' | grep routine | head -1) rm -f /rails/storage/ACTIVE_FLAG" || log_warning "Failed to remove flag from RTB"
     elif [ "$host" = "localhost" ]; then
         local container_name=$(docker ps --format '{{.Names}}' | grep routine | head -1)
         if [ -n "$container_name" ]; then
@@ -488,8 +488,8 @@ dry_run_transfer() {
     
     # Determine source host
     if [ "$target_host" = "$LAPTOP_HOST" ]; then
-        source_host="$PI_HOST"
-    elif [ "$target_host" = "$PI_HOST" ]; then
+        source_host="$RTB_HOST"
+    elif [ "$target_host" = "$RTB_HOST" ]; then
         source_host="$LAPTOP_HOST"
     else
         log_error "Invalid target host: $target_host"
@@ -537,8 +537,8 @@ transfer_flag() {
     
     # Determine source host
     if [ "$target_host" = "$LAPTOP_HOST" ]; then
-        source_host="$PI_HOST"
-    elif [ "$target_host" = "$PI_HOST" ]; then
+        source_host="$RTB_HOST"
+    elif [ "$target_host" = "$RTB_HOST" ]; then
         source_host="$LAPTOP_HOST"
     else
         log_error "Invalid target host: $target_host"
@@ -674,7 +674,7 @@ transfer_flag() {
             echo "🌍 Your app is now available at: http://localhost:8080"
             echo "✈️  Ready for travel!"
         else
-            echo "🏠 Your app is now available at: http://home.gila-lionfish.ts.net"
+            echo "🏠 Your app is now available at: http://rtb.gila-lionfish.ts.net:10001"
             echo "🏡 Welcome home!"
         fi
         
@@ -701,22 +701,22 @@ main() {
         "--dry-run")
             if [ -z "${2:-}" ]; then
                 log_error "Dry run requires a target host"
-                echo "Usage: $0 --dry-run [localhost|home.gila-lionfish.ts.net]"
+                echo "Usage: $0 --dry-run [localhost|rtb.gila-lionfish.ts.net]"
                 exit 1
             fi
             dry_run_transfer "$2"
             ;;
-        "localhost"|"home.gila-lionfish.ts.net")
+        "localhost"|"rtb.gila-lionfish.ts.net")
             transfer_flag "$1"
             ;;
         "")
             log_error "Missing target host"
-            echo "Usage: $0 [localhost|home.gila-lionfish.ts.net|--status|--help]"
+            echo "Usage: $0 [localhost|rtb.gila-lionfish.ts.net|--status|--help]"
             exit 1
             ;;
         *)
             log_error "Invalid argument: $1"
-            echo "Valid options: localhost, home.gila-lionfish.ts.net, --status, --help"
+            echo "Valid options: localhost, rtb.gila-lionfish.ts.net, --status, --help"
             exit 1
             ;;
     esac

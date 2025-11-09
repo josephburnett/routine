@@ -33,8 +33,8 @@ echo
 
 # Detect current environment
 current_host=$(hostname)
-if [ "$current_host" = "home.gila-lionfish.ts.net" ] || echo "$current_host" | grep -q "raspberrypi"; then
-    suggested_deployment="Pi (home.gila-lionfish.ts.net)"
+if [ "$current_host" = "rtb.gila-lionfish.ts.net" ] || echo "$current_host" | grep -q "raspberrypi"; then
+    suggested_deployment="RTB (rtb.gila-lionfish.ts.net)"
     deployment_type="pi"
 elif [ -f /.dockerenv ] || [ "$current_host" = "localhost" ]; then
     suggested_deployment="Laptop (localhost)"
@@ -49,11 +49,11 @@ echo
 
 # Check if flag already exists
 if [ "$deployment_type" = "pi" ]; then
-    # Check Pi deployment
-    if ssh -i ~/.ssh/home.gila-lionfish.ts.net joe@home.gila-lionfish.ts.net "cd ~/routine && kamal app exec --reuse 'test -f /rails/storage/ACTIVE_FLAG'" 2>/dev/null; then
-        log_warning "Flag already exists on Pi deployment"
+    # Check RTB deployment
+    if ssh -i ~/.ssh/rtb.local joe@rtb.gila-lionfish.ts.net "cd ~/routine && kamal app exec --reuse 'test -f /rails/storage/ACTIVE_FLAG'" 2>/dev/null; then
+        log_warning "Flag already exists on RTB deployment"
         log_info "Current flag status:"
-        ssh -i ~/.ssh/home.gila-lionfish.ts.net joe@home.gila-lionfish.ts.net "cd ~/routine && kamal app exec --reuse 'bin/rails flag:status'" 2>/dev/null || true
+        ssh -i ~/.ssh/rtb.local joe@rtb.gila-lionfish.ts.net "cd ~/routine && kamal app exec --reuse 'bin/rails flag:status'" 2>/dev/null || true
         echo
         log_info "If you want to reset the flag system, use: ./scripts/transfer_flag.sh --status"
         exit 0
@@ -72,7 +72,7 @@ fi
 
 # Confirmation
 echo "🎯 Setup Options:"
-echo "1. Pi (home.gila-lionfish.ts.net) - Set flag on Raspberry Pi deployment"
+echo "1. RTB (rtb.gila-lionfish.ts.net) - Set flag on Raspberry RTB deployment"
 echo "2. Laptop (localhost) - Set flag on laptop deployment"
 echo "3. Check status - See current flag status on both deployments"
 echo "4. Cancel - Exit without making changes"
@@ -84,7 +84,7 @@ read -r choice
 case $choice in
     1)
         target="pi"
-        target_name="Pi (home.gila-lionfish.ts.net)"
+        target_name="RTB (rtb.gila-lionfish.ts.net)"
         ;;
     2)
         target="laptop"
@@ -127,22 +127,22 @@ fi
 log_info "Creating initial flag on $target_name..."
 
 if [ "$target" = "pi" ]; then
-    # Create flag on Pi
-    if ! ping -c 1 -W 2 home.gila-lionfish.ts.net >/dev/null 2>&1; then
-        log_error "Cannot reach home.gila-lionfish.ts.net"
-        log_info "Make sure you're on the same network as your Pi"
+    # Create flag on RTB
+    if ! ping -c 1 -W 2 rtb.gila-lionfish.ts.net >/dev/null 2>&1; then
+        log_error "Cannot reach rtb.gila-lionfish.ts.net"
+        log_info "Make sure you're on the same network as your RTB"
         exit 1
     fi
     
-    if ! ssh -i ~/.ssh/home.gila-lionfish.ts.net joe@home.gila-lionfish.ts.net "cd ~/routine && kamal app logs >/dev/null 2>&1" 2>/dev/null; then
-        log_error "Pi deployment not running or not accessible"
-        log_info "Make sure your Pi deployment is running first:"
-        log_info "  ssh -i ~/.ssh/home.gila-lionfish.ts.net joe@home.gila-lionfish.ts.net"
+    if ! ssh -i ~/.ssh/rtb.local joe@rtb.gila-lionfish.ts.net "cd ~/routine && kamal app logs >/dev/null 2>&1" 2>/dev/null; then
+        log_error "RTB deployment not running or not accessible"
+        log_info "Make sure your RTB deployment is running first:"
+        log_info "  ssh -i ~/.ssh/rtb.local joe@rtb.gila-lionfish.ts.net"
         log_info "  cd ~/routine && kamal deploy"
         exit 1
     fi
     
-    ssh -i ~/.ssh/home.gila-lionfish.ts.net joe@home.gila-lionfish.ts.net "cd ~/routine && kamal app exec --reuse 'bin/rails flag:create[\"Initial setup\"]'"
+    ssh -i ~/.ssh/rtb.local joe@rtb.gila-lionfish.ts.net "cd ~/routine && kamal app exec --reuse 'bin/rails flag:create[\"Initial setup\"]'"
     
 elif [ "$target" = "laptop" ]; then
     # Create flag on laptop
@@ -162,11 +162,11 @@ log_info "🎉 Flag Transfer System is now active"
 log_info "📍 Active deployment: $target_name"
 echo
 if [ "$target" = "pi" ]; then
-    log_info "Your app is running at: http://home.gila-lionfish.ts.net:3000"
+    log_info "Your app is running at: http://rtb.gila-lionfish.ts.net:10001"
     log_info "To transfer to laptop: ./scripts/transfer_flag.sh localhost"
 else
     log_info "Your app is running at: http://localhost:8080"
-    log_info "To transfer to Pi: ./scripts/transfer_flag.sh home.gila-lionfish.ts.net"
+    log_info "To transfer to RTB: ./scripts/transfer_flag.sh rtb.gila-lionfish.ts.net"
 fi
 echo
 log_info "Check status anytime with: ./scripts/transfer_flag.sh --status"

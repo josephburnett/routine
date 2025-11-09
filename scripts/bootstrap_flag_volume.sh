@@ -12,8 +12,9 @@
 set -e
 
 # Configuration
-PI_HOST="home.gila-lionfish.ts.net"
-PI_USER="joe"
+RTB_HOST="rtb.gila-lionfish.ts.net"
+RTB_USER="joe"
+RTB_SSH_KEY="$HOME/.ssh/rtb.local"
 # SSH_KEY no longer needed with Tailscale SSH
 
 # Colors for output
@@ -36,22 +37,22 @@ log_info "This script creates the ACTIVE_FLAG directly in the Docker volume"
 log_info "to ensure it persists across container deployments."
 echo
 
-# Check Pi connectivity
-log_info "Checking connectivity to Pi ($PI_HOST)..."
-if ! ping -c 1 -W 2 "$PI_HOST" >/dev/null 2>&1; then
-    log_error "Cannot ping $PI_HOST"
+# Check RTB connectivity
+log_info "Checking connectivity to RTB ($RTB_HOST)..."
+if ! ping -c 1 -W 2 "$RTB_HOST" >/dev/null 2>&1; then
+    log_error "Cannot ping $RTB_HOST"
     exit 1
 fi
-log_success "Pi connectivity verified"
+log_success "RTB connectivity verified"
 
 # Check if volume exists
 log_info "Checking for survey_storage volume..."
-VOLUME_EXISTS=$(ssh "$PI_USER@$PI_HOST" "docker volume ls -q | grep survey_storage" 2>/dev/null || echo "")
+VOLUME_EXISTS=$(ssh -i "$RTB_SSH_KEY" "$RTB_USER@$RTB_HOST" "docker volume ls -q | grep survey_storage" 2>/dev/null || echo "")
 
 if [ -z "$VOLUME_EXISTS" ]; then
     log_warning "survey_storage volume not found"
     log_info "Creating survey_storage volume..."
-    ssh "$PI_USER@$PI_HOST" "docker volume create survey_storage"
+    ssh -i "$RTB_SSH_KEY" "$RTB_USER@$RTB_HOST" "docker volume create survey_storage"
     log_success "Volume created"
 else
     log_success "survey_storage volume found"
@@ -59,12 +60,12 @@ fi
 
 # Check if flag already exists in volume
 log_info "Checking if flag already exists in volume..."
-FLAG_EXISTS=$(ssh "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine test -f /data/ACTIVE_FLAG && echo 'yes' || echo 'no'" 2>/dev/null)
+FLAG_EXISTS=$(ssh -i "$RTB_SSH_KEY" "$RTB_USER@$RTB_HOST" "docker run --rm -v survey_storage:/data alpine test -f /data/ACTIVE_FLAG && echo 'yes' || echo 'no'" 2>/dev/null)
 
 if [ "$FLAG_EXISTS" = "yes" ]; then
     log_warning "Flag already exists in volume!"
     log_info "Current flag content:"
-    ssh "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine cat /data/ACTIVE_FLAG" 2>/dev/null || echo "Could not read flag content"
+    ssh -i "$RTB_SSH_KEY" "$RTB_USER@$RTB_HOST" "docker run --rm -v survey_storage:/data alpine cat /data/ACTIVE_FLAG" 2>/dev/null || echo "Could not read flag content"
     echo
     printf "Overwrite existing flag? (y/N): "
     read -r response
@@ -83,12 +84,12 @@ TRANSFER_ID="bootstrap_volume_$(date +"%Y%m%d_%H%M%S")"
 
 FLAG_CONTENT="ACTIVE_FLAG
 Created: $TIMESTAMP
-Host: home.gila-lionfish.ts.net
+Host: rtb.gila-lionfish.ts.net
 Source: volume_bootstrap
 Transfer ID: $TRANSFER_ID"
 
 # Create the flag using a temporary container with volume mounted
-ssh "$PI_USER@$PI_HOST" << EOF
+ssh -i "$RTB_SSH_KEY" "$RTB_USER@$RTB_HOST" << EOF
 docker run --rm -v survey_storage:/data alpine sh -c "cat > /data/ACTIVE_FLAG << 'FLAGEOF'
 $FLAG_CONTENT
 FLAGEOF"
@@ -96,11 +97,11 @@ EOF
 
 # Verify flag creation
 log_info "Verifying flag creation in volume..."
-if ssh "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine test -f /data/ACTIVE_FLAG" 2>/dev/null; then
+if ssh -i "$RTB_SSH_KEY" "$RTB_USER@$RTB_HOST" "docker run --rm -v survey_storage:/data alpine test -f /data/ACTIVE_FLAG" 2>/dev/null; then
     log_success "Flag created successfully in volume!"
     echo
     log_info "Flag content:"
-    ssh "$PI_USER@$PI_HOST" "docker run --rm -v survey_storage:/data alpine cat /data/ACTIVE_FLAG" 2>/dev/null || echo "Could not read flag content"
+    ssh -i "$RTB_SSH_KEY" "$RTB_USER@$RTB_HOST" "docker run --rm -v survey_storage:/data alpine cat /data/ACTIVE_FLAG" 2>/dev/null || echo "Could not read flag content"
 else
     log_error "Flag creation failed!"
     exit 1
