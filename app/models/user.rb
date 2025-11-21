@@ -12,5 +12,6 @@ class User < ApplicationRecord
   has_many :metrics
   has_many :alerts
   has_many :reports
+  has_many :remembers
   has_one :user_setting, dependent: :destroy
 end

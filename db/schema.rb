@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_16_143332) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_21_221607) do
   create_table "alert_status_caches", force: :cascade do |t|
     t.integer "alert_id", null: false
     t.boolean "is_activated", default: false
@@ -154,6 +154,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_16_143332) do
     t.integer "section_id", null: false
   end
 
+  create_table "remembers", force: :cascade do |t|
+    t.string "description", null: false
+    t.text "background"
+    t.string "state", default: "floating", null: false
+    t.float "decay", default: 1.0, null: false
+    t.string "namespace", default: "", null: false
+    t.boolean "deleted", default: false, null: false
+    t.integer "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["deleted"], name: "index_remembers_on_deleted"
+    t.index ["namespace"], name: "index_remembers_on_namespace"
+    t.index ["state"], name: "index_remembers_on_state"
+    t.index ["user_id"], name: "index_remembers_on_user_id"
+  end
+
   create_table "report_alerts", force: :cascade do |t|
     t.integer "report_id", null: false
     t.integer "alert_id", null: false
@@ -245,6 +261,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_16_143332) do
   add_foreign_key "metrics", "metrics", column: "first_metric_id"
   add_foreign_key "metrics", "users"
   add_foreign_key "questions", "users"
+  add_foreign_key "remembers", "users"
   add_foreign_key "report_alerts", "alerts"
   add_foreign_key "report_alerts", "reports"
   add_foreign_key "report_metrics", "metrics"

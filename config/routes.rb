@@ -61,6 +61,16 @@ Rails.application.routes.draw do
     end
   end
 
+  resources :remembers do
+    member do
+      patch :pin
+      patch :bump_up
+      patch :bump_down
+      patch :retire
+      patch :soft_delete
+    end
+  end
+
 
   resources :namespaces, only: [ :index, :show ], constraints: { id: /[^\/]+/ } do
     member do

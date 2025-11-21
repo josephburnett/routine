@@ -1,0 +1,53 @@
+<div class="container">
+  <%= render 'shared/main_nav' %>
+
+  <div class="index-header">
+    <h1><%= @remember.description %></h1>
+    <div style="display: flex; gap: 0.5rem;">
+      <%= link_to "Edit", edit_remember_path(@remember), class: "btn btn-primary" %>
+    </div>
+  </div>
+
+  <%= link_to "<- Back to Remembers", remembers_path(namespace: @remember.namespace), class: "back-link" %>
+
+  <div class="card">
+    <h3>Status</h3>
+    <p>
+      <strong>State:</strong>
+      <% case @remember.state %>
+      <% when "pinned" %>
+        <span style="color: var(--primary);">📌 Pinned (always shown)</span>
+      <% when "floating" %>
+        <span>Floating (<%= format('%.0f%%', @remember.decay * 100) %> visibility)</span>
+      <% when "retired" %>
+        <span style="color: var(--text-secondary);">Retired (hidden)</span>
+      <% end %>
+    </p>
+    <p><strong>Decay:</strong> <%= format('%.2f', @remember.decay) %></p>
+  </div>
+
+  <% if @remember.background.present? %>
+    <div class="card">
+      <h3>Background</h3>
+      <p style="white-space: pre-wrap;"><%= @remember.background %></p>
+    </div>
+  <% end %>
+
+  <div class="card">
+    <h3>Quick Actions</h3>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <%= link_to "📌 Pin", pin_remember_path(@remember),
+          data: { "turbo-method": :patch },
+          class: "btn btn-secondary" %>
+      <%= link_to "⬆ Bump Up", bump_up_remember_path(@remember),
+          data: { "turbo-method": :patch },
+          class: "btn btn-secondary" %>
+      <%= link_to "⬇ Bump Down", bump_down_remember_path(@remember),
+          data: { "turbo-method": :patch },
+          class: "btn btn-secondary" %>
+      <%= link_to "🗄 Retire", retire_remember_path(@remember),
+          data: { "turbo-method": :patch, confirm: "Retire this remember?" },
+          class: "btn btn-secondary" %>
+    </div>
+  </div>
+</div>

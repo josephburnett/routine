@@ -1,0 +1,64 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+pinned_remember:
+  description: Always remember this important thing
+  background: This is pinned so it always shows up
+  state: pinned
+  decay: 1.0
+  namespace: ""
+  deleted: false
+  user: one
+
+floating_high:
+  description: High priority floating remember
+  background: This has high decay so shows often
+  state: floating
+  decay: 0.9
+  namespace: ""
+  deleted: false
+  user: one
+
+floating_low:
+  description: Low priority floating remember
+  background: This has low decay so shows rarely
+  state: floating
+  decay: 0.1
+  namespace: ""
+  deleted: false
+  user: one
+
+retired_remember:
+  description: This has been retired
+  background: No longer relevant
+  state: retired
+  decay: 0.0
+  namespace: ""
+  deleted: false
+  user: one
+
+namespaced_remember:
+  description: Remember in a namespace
+  background: For testing namespace filtering
+  state: floating
+  decay: 0.5
+  namespace: work.projects
+  deleted: false
+  user: one
+
+deleted_remember:
+  description: This was deleted
+  background: Should not show up
+  state: floating
+  decay: 0.5
+  namespace: ""
+  deleted: true
+  user: one
+
+user_two_remember:
+  description: Belongs to user two
+  background: For testing user isolation
+  state: floating
+  decay: 0.5
+  namespace: ""
+  deleted: false
+  user: two

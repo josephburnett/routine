@@ -9,7 +9,7 @@ class Namespace
     namespaces = Set.new
 
     # Collect all namespaces from all namespaceable models
-    [ Form, Section, Question, Answer, Response, Metric, Alert ].each do |model|
+    [ Form, Section, Question, Answer, Response, Metric, Alert, Remember ].each do |model|
       namespaces.merge(model.namespaces_for_user(user))
     end
 
@@ -40,7 +40,7 @@ class Namespace
     all_namespaces = all_for_user(user).map(&:name)
 
     # Direct existence: has entities in this exact namespace
-    has_direct_entities = [ Form, Section, Question, Answer, Response, Metric, Alert ].any? do |model|
+    has_direct_entities = [ Form, Section, Question, Answer, Response, Metric, Alert, Remember ].any? do |model|
       model.where(user: user, namespace: namespace_name).exists?
     end
 
@@ -112,7 +112,8 @@ class Namespace
         [ "Answers", Answer ],
         [ "Responses", Response ],
         [ "Metrics", Metric ],
-        [ "Alerts", Alert ]
+        [ "Alerts", Alert ],
+        [ "Remembers", Remember ]
       ].each do |label, model|
         items = model.where(user: user, namespace: name).not_deleted
         entities[label] = items if items.any?

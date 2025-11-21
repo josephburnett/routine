@@ -1,0 +1,47 @@
+<div class="container">
+  <%= render 'shared/main_nav' %>
+
+  <h1>Edit Remember</h1>
+
+  <%= link_to "<- Back to Remember", @remember, class: "back-link" %>
+
+  <div class="card">
+    <%= form_with model: @remember, local: true do |form| %>
+      <% if @remember.errors.any? %>
+        <div class="error-messages">
+          <h4><%= pluralize(@remember.errors.count, "error") %> prohibited this remember from being saved:</h4>
+          <ul>
+            <% @remember.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="field">
+        <%= form.label :description, "What to remember (one line)" %>
+        <%= form.text_field :description, required: true %>
+      </div>
+
+      <div class="field">
+        <%= form.label :background, "Background (why this is important)" %>
+        <%= form.text_area :background, rows: 5 %>
+      </div>
+
+      <%= render 'shared/namespace_field', form: form %>
+
+      <div class="actions">
+        <%= form.submit "Update Remember" %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="card">
+    <div style="text-align: center;">
+      <%= link_to "Delete Remember", soft_delete_remember_path(@remember),
+          data: { "turbo-method": :patch, confirm: "Are you sure you want to delete this remember? This action cannot be undone." },
+          class: "btn",
+          style: "background-color: var(--error); color: var(--white);" %>
+    </div>
+  </div>
+</div>

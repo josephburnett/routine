@@ -1,0 +1,38 @@
+<div class="container">
+  <%= render 'shared/main_nav' %>
+
+  <h1>New Remember</h1>
+
+  <%= link_to "<- Back to Remembers", remembers_path(namespace: params[:namespace]), class: "back-link" %>
+
+  <div class="card">
+    <%= form_with model: @remember, local: true, data: { turbo: false } do |form| %>
+      <% if @remember.errors.any? %>
+        <div class="error-messages">
+          <h4><%= pluralize(@remember.errors.count, "error") %> prohibited this remember from being saved:</h4>
+          <ul>
+            <% @remember.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="field">
+        <%= form.label :description, "What to remember (one line)" %>
+        <%= form.text_field :description, required: true, placeholder: "Enter a brief reminder..." %>
+      </div>
+
+      <div class="field">
+        <%= form.label :background, "Background (why this is important)" %>
+        <%= form.text_area :background, rows: 5, placeholder: "Optional: explain why this is worth remembering..." %>
+      </div>
+
+      <%= render 'shared/namespace_field', form: form %>
+
+      <div class="actions">
+        <%= form.submit "Create Remember" %>
+      </div>
+    <% end %>
+  </div>
+</div>
