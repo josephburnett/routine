@@ -15,14 +15,13 @@ servers:
     - rtb.gila-lionfish.ts.net
 
 # Proxy configuration for Tailscale serve setup:
-# - Tailscale serve handles SSL termination and proxies to 127.0.0.1:10001
+# - Tailscale serve handles SSL termination and proxies to kamal-proxy on port 10001
+# - kamal-proxy listening ports are configured via .kamal/hooks/pre-deploy hook
 # - kamal-proxy should NOT handle SSL (Tailscale does it)
-# - Bind to 127.0.0.1 to avoid conflict with Tailscale's port binding
 proxy:
   host: rtb.gila-lionfish.ts.net
   app_port: 3000
   ssl: false
-  port: "127.0.0.1:10001"
 
 # Credentials for your image host.
 registry:

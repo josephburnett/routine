@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# Configure kamal-proxy to listen on port 10001 instead of 80
+# This allows Tailscale serve to handle SSL termination on port 443
+# and forward to kamal-proxy on 10001
+#
+# This hook ensures the config is set on fresh server deployments
+
+echo "Configuring kamal-proxy boot options..."
+kamal proxy boot_config set --http-port 10001 --https-port 10002
+
+echo "Proxy boot config set to http:10001, https:10002"
