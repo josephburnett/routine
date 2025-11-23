@@ -6,37 +6,15 @@
   <% if @items.any? %>
     <div class="remember-list" style="margin-top: 1.5rem;">
       <% @items.each do |remember| %>
-        <div class="remember-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid var(--border);">
-          <div style="flex: 1;">
-            <%= link_to remember.description, remember_path(remember), style: "text-decoration: none; color: inherit;" %>
+        <div class="remember-item" style="padding: 0.75rem; border-bottom: 1px solid var(--border);">
+          <%= link_to remember_path(remember), style: "text-decoration: none; color: inherit;" do %>
+            <%= remember.description %>
             <% if remember.namespace.present? && remember.namespace != @current_namespace %>
               <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.5rem;">
                 [<%= remember.namespace %>]
               </span>
             <% end %>
-          </div>
-          <div class="remember-actions" style="display: flex; gap: 0.25rem;">
-            <%= link_to "📌", pin_remember_path(remember, return_to: "display", display_namespace: @current_namespace),
-                data: { "turbo-method": :patch },
-                title: "Pin",
-                class: "btn btn-sm",
-                style: "padding: 0.25rem 0.5rem; font-size: 0.875rem;" %>
-            <%= link_to "⬆", bump_up_remember_path(remember, return_to: "display", display_namespace: @current_namespace),
-                data: { "turbo-method": :patch },
-                title: "Bump Up (2x decay)",
-                class: "btn btn-sm",
-                style: "padding: 0.25rem 0.5rem; font-size: 0.875rem;" %>
-            <%= link_to "⬇", bump_down_remember_path(remember, return_to: "display", display_namespace: @current_namespace),
-                data: { "turbo-method": :patch },
-                title: "Bump Down (0.5x decay)",
-                class: "btn btn-sm",
-                style: "padding: 0.25rem 0.5rem; font-size: 0.875rem;" %>
-            <%= link_to "🗄", retire_remember_path(remember, return_to: "display", display_namespace: @current_namespace),
-                data: { "turbo-method": :patch, confirm: "Retire this remember?" },
-                title: "Retire",
-                class: "btn btn-sm",
-                style: "padding: 0.25rem 0.5rem; font-size: 0.875rem;" %>
-          </div>
+          <% end %>
         </div>
       <% end %>
     </div>

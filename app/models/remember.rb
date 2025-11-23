@@ -36,11 +36,15 @@ class Remember < ApplicationRecord
     threshold < decay
   end
 
-  # Apply daily decay - multiply by 0.8, minimum 0.01
+  # Apply daily decay - subtract daily_decay, with minimum of min_decay
+  # Uses user settings if available, otherwise defaults (0.05 daily, 0.01 min)
   def apply_decay!
     return if state == "pinned" || state == "retired"
 
-    new_decay = [ decay * 0.8, 0.01 ].max
+    daily_decay = user.user_setting&.remember_daily_decay || 0.05
+    min_decay = user.user_setting&.remember_min_decay || 0.01
+
+    new_decay = [ decay - daily_decay, min_decay ].max
     update!(decay: new_decay)
   end
 
@@ -55,9 +59,10 @@ class Remember < ApplicationRecord
     update!(state: "floating", decay: new_decay)
   end
 
-  # Bump down - halve the decay (min 0.01), set to floating if not already
+  # Bump down - halve the decay (min from user settings), set to floating if not already
   def bump_down!
-    new_decay = [ decay / 2, 0.01 ].max
+    min_decay = user.user_setting&.remember_min_decay || 0.01
+    new_decay = [ decay / 2, min_decay ].max
     update!(decay: new_decay)
     update!(state: "floating") unless state == "retired"
   end

@@ -81,20 +81,42 @@ class RememberTest < ActiveSupport::TestCase
     assert results.all? { |r| r == results.first }, "visible_today? should be stable within same day"
   end
 
-  test "apply_decay! reduces decay by 20%" do
+  test "apply_decay! subtracts daily decay (default 0.05)" do
     remember = remembers(:floating_high)
     original_decay = remember.decay
 
     remember.apply_decay!
-    assert_in_delta original_decay * 0.8, remember.decay, 0.001
+    assert_in_delta original_decay - 0.05, remember.decay, 0.001
   end
 
-  test "apply_decay! does not go below 0.01" do
+  test "apply_decay! does not go below min decay (default 0.01)" do
     remember = remembers(:floating_low)
-    remember.update!(decay: 0.011)  # 0.011 * 0.8 = 0.0088, should clamp to 0.01
+    remember.update!(decay: 0.03)  # 0.03 - 0.05 = -0.02, should clamp to 0.01
 
     remember.apply_decay!
     assert_equal 0.01, remember.decay
+  end
+
+  test "apply_decay! uses user settings when available" do
+    user = users(:one)
+    user.create_user_setting!(
+      remember_daily_decay: 0.1,
+      remember_min_decay: 0.05,
+      backup_frequency: "daily"
+    )
+
+    remember = remembers(:floating_high)
+    remember.update!(decay: 0.5)
+
+    remember.apply_decay!
+    assert_in_delta 0.4, remember.decay, 0.001  # 0.5 - 0.1 = 0.4
+
+    # Test min decay from settings
+    remember.update!(decay: 0.08)
+    remember.apply_decay!
+    assert_equal 0.05, remember.decay  # 0.08 - 0.1 = -0.02, clamped to 0.05 (user's min)
+
+    user.user_setting.destroy
   end
 
   test "apply_decay! does nothing for pinned remembers" do
@@ -146,12 +168,29 @@ class RememberTest < ActiveSupport::TestCase
     assert_equal 0.2, remember.decay
   end
 
-  test "bump_down! does not go below 0.01" do
+  test "bump_down! does not go below min decay (default 0.01)" do
     remember = remembers(:floating_low)
     remember.update!(decay: 0.01)
 
     remember.bump_down!
     assert_equal 0.01, remember.decay
+  end
+
+  test "bump_down! uses user min_decay setting" do
+    user = users(:one)
+    user.create_user_setting!(
+      remember_daily_decay: 0.05,
+      remember_min_decay: 0.1,
+      backup_frequency: "daily"
+    )
+
+    remember = remembers(:floating_high)
+    remember.update!(decay: 0.15)
+
+    remember.bump_down!
+    assert_equal 0.1, remember.decay  # 0.15 / 2 = 0.075, clamped to 0.1 (user's min)
+
+    user.user_setting.destroy
   end
 
   test "retire! sets state to retired and decay to 0" do

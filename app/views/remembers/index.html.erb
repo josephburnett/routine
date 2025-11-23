@@ -48,39 +48,35 @@
         <h3><%= @current_namespace.present? ? "Remembers in #{@current_namespace}" : "Remembers in Root" %></h3>
         <div class="remember-list">
           <% @items.each do |remember| %>
-            <div class="remember-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid var(--border); <%= remember.state == 'retired' ? 'opacity: 0.5;' : '' %>">
-              <div style="flex: 1;">
-                <%= link_to remember.description, remember_path(remember), style: "text-decoration: none; color: inherit;" %>
-                <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.5rem;">
-                  <%= format('%.2f', remember.decay) %>
-                  <% if remember.state == "pinned" %>
-                    📌
-                  <% elsif remember.state == "retired" %>
-                    (retired)
-                  <% end %>
-                </span>
+            <div class="remember-item" style="display: flex; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border); gap: 0.5rem; <%= remember.state == 'retired' ? 'opacity: 0.5;' : '' %>">
+              <div style="flex: 1; min-width: 0; overflow: hidden;">
+                <%= link_to remember.description, remember_path(remember), style: "text-decoration: none; color: inherit; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" %>
               </div>
-              <div class="remember-actions" style="display: flex; gap: 0.25rem;">
+              <div style="flex-shrink: 0; color: var(--text-secondary); font-size: 0.75rem; width: 3rem; text-align: right;">
+                <%= format('%.2f', remember.decay) %>
+                <% if remember.state == "pinned" %>📌<% end %>
+              </div>
+              <div class="remember-actions" style="display: flex; gap: 0.25rem; flex-shrink: 0;">
                 <%= link_to "📌", pin_remember_path(remember),
                     data: { "turbo-method": :patch },
                     title: "Pin",
                     class: "btn btn-sm",
-                    style: "padding: 0.25rem 0.5rem; font-size: 0.875rem;" %>
+                    style: "padding: 0.25rem 0.5rem; font-size: 0.875rem; min-width: 2rem;" %>
                 <%= link_to "⬆", bump_up_remember_path(remember),
                     data: { "turbo-method": :patch },
                     title: "Bump Up (2x decay)",
                     class: "btn btn-sm",
-                    style: "padding: 0.25rem 0.5rem; font-size: 0.875rem;" %>
+                    style: "padding: 0.25rem 0.5rem; font-size: 0.875rem; min-width: 2rem;" %>
                 <%= link_to "⬇", bump_down_remember_path(remember),
                     data: { "turbo-method": :patch },
                     title: "Bump Down (0.5x decay)",
                     class: "btn btn-sm",
-                    style: "padding: 0.25rem 0.5rem; font-size: 0.875rem;" %>
+                    style: "padding: 0.25rem 0.5rem; font-size: 0.875rem; min-width: 2rem;" %>
                 <%= link_to "🗄", retire_remember_path(remember),
                     data: { "turbo-method": :patch, confirm: "Retire this remember?" },
                     title: "Retire",
                     class: "btn btn-sm",
-                    style: "padding: 0.25rem 0.5rem; font-size: 0.875rem;" %>
+                    style: "padding: 0.25rem 0.5rem; font-size: 0.875rem; min-width: 2rem;" %>
               </div>
             </div>
           <% end %>

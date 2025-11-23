@@ -8,6 +8,10 @@ class UserSetting < ApplicationRecord
   validates :encryption_key, presence: true, if: :backup_enabled?
   validates :backup_frequency, inclusion: { in: BACKUP_FREQUENCIES }
 
+  # Remember decay settings validations
+  validates :remember_daily_decay, numericality: { greater_than: 0.0, less_than_or_equal_to: 1.0 }
+  validates :remember_min_decay, numericality: { greater_than_or_equal_to: 0.0, less_than: 1.0 }
+
   before_create :generate_encryption_key, if: :backup_enabled?
 
   private

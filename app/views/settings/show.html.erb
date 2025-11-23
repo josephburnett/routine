@@ -90,9 +90,33 @@
         <% end %>
       </div>
 
-      <div class="field" style="margin-top: 2rem;">
-        <%= form.submit "Save Settings", class: "btn btn-primary" %>
+    </div>
+
+    <div class="card" style="margin-top: 2rem;">
+      <h2>Remember Settings</h2>
+      <p style="color: #666; margin-bottom: 1.5rem;">
+        Configure how Remembers decay over time. Floating remembers lose visibility daily until they reach the minimum.
+      </p>
+
+      <div class="field">
+        <%= form.label :remember_daily_decay, "Daily Decay Rate" %>
+        <%= form.number_field :remember_daily_decay, step: 0.01, min: 0.01, max: 1.0, required: true %>
+        <small style="display: block; color: #666; margin-top: 0.25rem;">
+          Amount subtracted from decay each day (default: 0.05). With 0.05, a remember reaches minimum in ~20 days.
+        </small>
       </div>
+
+      <div class="field">
+        <%= form.label :remember_min_decay, "Minimum Decay" %>
+        <%= form.number_field :remember_min_decay, step: 0.01, min: 0.0, max: 0.99, required: true %>
+        <small style="display: block; color: #666; margin-top: 0.25rem;">
+          Lowest decay value a remember can reach (default: 0.01). At 0.01, it shows ~1% of days.
+        </small>
+      </div>
+    </div>
+
+    <div class="field" style="margin-top: 2rem;">
+      <%= form.submit "Save Settings", class: "btn btn-primary" %>
     </div>
   <% end %>
 </div>
