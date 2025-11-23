@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# Note: 1Password sign-in check is in .kamal/secrets (runs first)
+
 # Configure kamal-proxy to listen on port 10001 instead of 80
 # This allows Tailscale serve to handle SSL termination on port 443
 # and forward to kamal-proxy on 10001
