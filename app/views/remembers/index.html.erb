@@ -4,16 +4,10 @@
   <% if logged_in? %>
     <div class="index-header">
       <h1>Remembers</h1>
-      <%= link_to "New Remember", new_remember_path(namespace: @current_namespace), class: "btn btn-primary" %>
-    </div>
-
-    <!-- Show Retired Toggle -->
-    <div style="margin-bottom: 1rem;">
-      <% if @show_retired %>
-        <%= link_to "Hide Retired", remembers_path(namespace: @current_namespace), class: "btn btn-secondary" %>
-      <% else %>
-        <%= link_to "Show Retired", remembers_path(namespace: @current_namespace, show_retired: true), class: "btn btn-secondary" %>
-      <% end %>
+      <div style="display: flex; gap: 0.5rem;">
+        <%= link_to "Show", display_remembers_path(namespace: @current_namespace), class: "btn btn-primary" %>
+        <%= link_to "New Remember", new_remember_path(namespace: @current_namespace), class: "btn btn-secondary" %>
+      </div>
     </div>
 
     <!-- Breadcrumb Navigation -->
@@ -38,7 +32,7 @@
           <% @folders.each do |folder| %>
             <% folder_namespace = @current_namespace.present? ? "#{@current_namespace}.#{folder}" : folder %>
             <div class="folder-item">
-              <%= link_to remembers_path(namespace: folder_namespace, show_retired: @show_retired), class: "folder-link" do %>
+              <%= link_to remembers_path(namespace: folder_namespace), class: "folder-link" do %>
                 <span class="folder-icon">📁</span>
                 <span class="folder-name"><%= folder %></span>
               <% end %>
@@ -57,31 +51,32 @@
             <div class="remember-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid var(--border); <%= remember.state == 'retired' ? 'opacity: 0.5;' : '' %>">
               <div style="flex: 1;">
                 <%= link_to remember.description, remember_path(remember), style: "text-decoration: none; color: inherit;" %>
-                <% if remember.state == "pinned" %>
-                  <span style="color: var(--primary); font-size: 0.75rem; margin-left: 0.5rem;">📌 pinned</span>
-                <% elsif remember.state == "retired" %>
-                  <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.5rem;">retired</span>
-                <% else %>
-                  <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.5rem;">(<%= format('%.0f%%', remember.decay * 100) %>)</span>
-                <% end %>
+                <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.5rem;">
+                  <%= format('%.2f', remember.decay) %>
+                  <% if remember.state == "pinned" %>
+                    📌
+                  <% elsif remember.state == "retired" %>
+                    (retired)
+                  <% end %>
+                </span>
               </div>
               <div class="remember-actions" style="display: flex; gap: 0.25rem;">
-                <%= link_to "📌", pin_remember_path(remember, show_retired: @show_retired),
+                <%= link_to "📌", pin_remember_path(remember),
                     data: { "turbo-method": :patch },
                     title: "Pin",
                     class: "btn btn-sm",
                     style: "padding: 0.25rem 0.5rem; font-size: 0.875rem;" %>
-                <%= link_to "⬆", bump_up_remember_path(remember, show_retired: @show_retired),
+                <%= link_to "⬆", bump_up_remember_path(remember),
                     data: { "turbo-method": :patch },
                     title: "Bump Up (2x decay)",
                     class: "btn btn-sm",
                     style: "padding: 0.25rem 0.5rem; font-size: 0.875rem;" %>
-                <%= link_to "⬇", bump_down_remember_path(remember, show_retired: @show_retired),
+                <%= link_to "⬇", bump_down_remember_path(remember),
                     data: { "turbo-method": :patch },
                     title: "Bump Down (0.5x decay)",
                     class: "btn btn-sm",
                     style: "padding: 0.25rem 0.5rem; font-size: 0.875rem;" %>
-                <%= link_to "🗄", retire_remember_path(remember, show_retired: @show_retired),
+                <%= link_to "🗄", retire_remember_path(remember),
                     data: { "turbo-method": :patch, confirm: "Retire this remember?" },
                     title: "Retire",
                     class: "btn btn-sm",

@@ -162,11 +162,11 @@ class RememberTest < ActiveSupport::TestCase
     assert_equal 0.0, remember.decay
   end
 
-  test "sorted_by_visibility puts pinned first" do
-    sorted = users(:one).remembers.not_deleted.sorted_by_visibility
-    first_remember = sorted.first
+  test "sorted_by_decay orders by decay descending" do
+    sorted = users(:one).remembers.not_deleted.sorted_by_decay
+    decays = sorted.map(&:decay)
 
-    assert_equal "pinned", first_remember.state
+    assert_equal decays, decays.sort.reverse, "Should be sorted by decay descending"
   end
 
   test "items_in_namespace filters by namespace" do
@@ -175,5 +175,82 @@ class RememberTest < ActiveSupport::TestCase
 
     assert_not_includes root_items, remembers(:namespaced_remember)
     assert_includes namespaced_items, remembers(:namespaced_remember)
+  end
+
+  # Recursive namespace tests
+  test "in_namespace_recursive with blank namespace returns all user remembers" do
+    all_remembers = Remember.in_namespace_recursive(users(:one), "")
+
+    assert_includes all_remembers, remembers(:pinned_remember)
+    assert_includes all_remembers, remembers(:floating_high)
+    assert_includes all_remembers, remembers(:namespaced_remember)
+    assert_includes all_remembers, remembers(:work_remember)
+    assert_includes all_remembers, remembers(:nested_deep_remember)
+    assert_not_includes all_remembers, remembers(:user_two_remember)
+  end
+
+  test "in_namespace_recursive with namespace returns exact and child namespaces" do
+    work_remembers = Remember.in_namespace_recursive(users(:one), "work")
+
+    # Should include "work" namespace
+    assert_includes work_remembers, remembers(:work_remember)
+    # Should include "work.projects" namespace
+    assert_includes work_remembers, remembers(:namespaced_remember)
+    # Should include "work.projects.urgent" namespace
+    assert_includes work_remembers, remembers(:nested_deep_remember)
+    # Should NOT include root namespace
+    assert_not_includes work_remembers, remembers(:pinned_remember)
+    assert_not_includes work_remembers, remembers(:floating_high)
+  end
+
+  test "in_namespace_recursive with deep namespace returns only that and children" do
+    project_remembers = Remember.in_namespace_recursive(users(:one), "work.projects")
+
+    # Should include "work.projects" namespace
+    assert_includes project_remembers, remembers(:namespaced_remember)
+    # Should include "work.projects.urgent" namespace
+    assert_includes project_remembers, remembers(:nested_deep_remember)
+    # Should NOT include "work" namespace (parent)
+    assert_not_includes project_remembers, remembers(:work_remember)
+    # Should NOT include root namespace
+    assert_not_includes project_remembers, remembers(:pinned_remember)
+  end
+
+  test "in_namespace_recursive does not match partial namespace names" do
+    # Create a remember in "eworker" namespace - should NOT match "work"
+    worker_remember = Remember.create!(
+      user: users(:one),
+      description: "Worker remember",
+      state: "floating",
+      decay: 0.5,
+      namespace: "worker"
+    )
+
+    work_remembers = Remember.in_namespace_recursive(users(:one), "work")
+
+    assert_not_includes work_remembers, worker_remember
+
+    worker_remember.destroy
+  end
+
+  test "visible_today_recursive includes child namespaces" do
+    # The nested_deep_remember is pinned so it should always be visible
+    visible = Remember.visible_today_recursive(users(:one), "work")
+
+    # Pinned remember in work.projects.urgent should be included
+    assert_includes visible, remembers(:nested_deep_remember)
+  end
+
+  test "visible_today_recursive excludes retired and deleted" do
+    visible = Remember.visible_today_recursive(users(:one), "")
+
+    assert_not_includes visible, remembers(:retired_remember)
+    assert_not_includes visible, remembers(:deleted_remember)
+  end
+
+  test "visible_today_recursive respects user isolation" do
+    visible = Remember.visible_today_recursive(users(:one), "")
+
+    assert_not_includes visible, remembers(:user_two_remember)
   end
 end

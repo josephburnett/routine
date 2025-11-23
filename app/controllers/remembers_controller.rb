@@ -6,17 +6,17 @@ class RemembersController < ApplicationController
 
   def index
     setup_namespace_browsing(Remember, :remembers_path)
-    @show_retired = params[:show_retired] == "true"
+    # Show ALL remembers in current namespace (including retired) in decay order
+    @items = Remember.items_in_namespace(current_user, @current_namespace)
+                     .not_deleted
+                     .sorted_by_decay
+  end
 
-    if @show_retired
-      # Show all non-deleted remembers including retired
-      @items = Remember.items_in_namespace(current_user, @current_namespace)
-                       .not_deleted
-                       .sorted_by_visibility
-    else
-      # Show only visible remembers for today
-      @items = Remember.visible_today_for_user(current_user, @current_namespace)
-    end
+  # Streamlined view showing only visible_today remembers
+  # Includes current namespace and all child namespaces
+  def display
+    @current_namespace = params[:namespace] || ""
+    @items = Remember.visible_today_recursive(current_user, @current_namespace)
   end
 
   def show
@@ -54,26 +54,22 @@ class RemembersController < ApplicationController
 
   def pin
     @remember.pin!
-    redirect_to remembers_path(namespace: @remember.namespace, show_retired: params[:show_retired]),
-                notice: "Remember pinned"
+    redirect_back_to_list("Remember pinned")
   end
 
   def bump_up
     @remember.bump_up!
-    redirect_to remembers_path(namespace: @remember.namespace, show_retired: params[:show_retired]),
-                notice: "Remember bumped up (decay: #{format('%.2f', @remember.decay)})"
+    redirect_back_to_list("Remember bumped up (decay: #{format('%.2f', @remember.decay)})")
   end
 
   def bump_down
     @remember.bump_down!
-    redirect_to remembers_path(namespace: @remember.namespace, show_retired: params[:show_retired]),
-                notice: "Remember bumped down (decay: #{format('%.2f', @remember.decay)})"
+    redirect_back_to_list("Remember bumped down (decay: #{format('%.2f', @remember.decay)})")
   end
 
   def retire
     @remember.retire!
-    redirect_to remembers_path(namespace: @remember.namespace, show_retired: params[:show_retired]),
-                notice: "Remember retired"
+    redirect_back_to_list("Remember retired")
   end
 
   private
@@ -84,5 +80,13 @@ class RemembersController < ApplicationController
 
   def remember_params
     params.require(:remember).permit(:description, :background, :namespace)
+  end
+
+  def redirect_back_to_list(notice_message)
+    if params[:return_to] == "display"
+      redirect_to display_remembers_path(namespace: params[:display_namespace]), notice: notice_message
+    else
+      redirect_to remembers_path(namespace: @remember.namespace), notice: notice_message
+    end
   end
 end

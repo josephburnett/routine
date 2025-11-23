@@ -45,6 +45,24 @@ namespaced_remember:
   deleted: false
   user: one
 
+work_remember:
+  description: Remember in work namespace
+  background: For testing recursive namespace
+  state: floating
+  decay: 0.7
+  namespace: work
+  deleted: false
+  user: one
+
+nested_deep_remember:
+  description: Deeply nested remember
+  background: For testing recursive namespace
+  state: pinned
+  decay: 1.0
+  namespace: work.projects.urgent
+  deleted: false
+  user: one
+
 deleted_remember:
   description: This was deleted
   background: Should not show up

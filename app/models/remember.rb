@@ -67,20 +67,28 @@ class Remember < ApplicationRecord
     update!(state: "retired", decay: 0.0)
   end
 
-  # Sort order: pinned first, then by decay descending
-  def self.sorted_by_visibility
-    order(
-      Arel.sql("CASE WHEN state = 'pinned' THEN 0 ELSE 1 END"),
-      decay: :desc
-    )
+  # Sort by decay descending (pinned=1.0 at top, retired=0.0 at bottom)
+  def self.sorted_by_decay
+    order(decay: :desc)
   end
 
-  # Get visible remembers for today
-  def self.visible_today_for_user(user, namespace = "")
-    items_in_namespace(user, namespace)
+  # Get items in namespace and all child namespaces
+  # e.g., "home" matches "home", "home.chores", "home.chores.weekly"
+  def self.in_namespace_recursive(user, namespace = "")
+    if namespace.blank?
+      where(user: user)
+    else
+      where(user: user)
+        .where("namespace = ? OR namespace LIKE ?", namespace, "#{namespace}.%")
+    end
+  end
+
+  # Get visible remembers for today in namespace and all child namespaces
+  def self.visible_today_recursive(user, namespace = "")
+    in_namespace_recursive(user, namespace)
       .not_deleted
       .active
-      .sorted_by_visibility
+      .sorted_by_decay
       .select(&:visible_today?)
   end
 end

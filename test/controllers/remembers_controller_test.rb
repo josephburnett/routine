@@ -10,11 +10,6 @@ class RemembersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "should get index with show_retired" do
-    get remembers_path(show_retired: true)
-    assert_response :success
-  end
-
   test "should get index with namespace" do
     get remembers_path(namespace: "work.projects")
     assert_response :success
@@ -74,7 +69,7 @@ class RemembersControllerTest < ActionDispatch::IntegrationTest
   test "should pin remember" do
     remember = remembers(:floating_high)
     patch pin_remember_path(remember)
-    assert_redirected_to remembers_path(namespace: remember.namespace, show_retired: nil)
+    assert_redirected_to remembers_path(namespace: remember.namespace)
     remember.reload
     assert_equal "pinned", remember.state
     assert_equal 1.0, remember.decay
@@ -84,7 +79,7 @@ class RemembersControllerTest < ActionDispatch::IntegrationTest
     remember = remembers(:floating_low)
     remember.update!(decay: 0.3)
     patch bump_up_remember_path(remember)
-    assert_redirected_to remembers_path(namespace: remember.namespace, show_retired: nil)
+    assert_redirected_to remembers_path(namespace: remember.namespace)
     remember.reload
     assert_equal 0.6, remember.decay
   end
@@ -93,7 +88,7 @@ class RemembersControllerTest < ActionDispatch::IntegrationTest
     remember = remembers(:floating_high)
     remember.update!(decay: 0.4)
     patch bump_down_remember_path(remember)
-    assert_redirected_to remembers_path(namespace: remember.namespace, show_retired: nil)
+    assert_redirected_to remembers_path(namespace: remember.namespace)
     remember.reload
     assert_equal 0.2, remember.decay
   end
@@ -101,10 +96,33 @@ class RemembersControllerTest < ActionDispatch::IntegrationTest
   test "should retire remember" do
     remember = remembers(:floating_high)
     patch retire_remember_path(remember)
-    assert_redirected_to remembers_path(namespace: remember.namespace, show_retired: nil)
+    assert_redirected_to remembers_path(namespace: remember.namespace)
     remember.reload
     assert_equal "retired", remember.state
     assert_equal 0.0, remember.decay
+  end
+
+  # Display action tests
+  test "should get display" do
+    get display_remembers_path
+    assert_response :success
+  end
+
+  test "should get display with namespace" do
+    get display_remembers_path(namespace: "work")
+    assert_response :success
+  end
+
+  test "display action returns to display view after pin" do
+    remember = remembers(:floating_high)
+    patch pin_remember_path(remember, return_to: "display", display_namespace: "")
+    assert_redirected_to display_remembers_path(namespace: "")
+  end
+
+  test "display action returns to display view after bump_up" do
+    remember = remembers(:floating_low)
+    patch bump_up_remember_path(remember, return_to: "display", display_namespace: "work")
+    assert_redirected_to display_remembers_path(namespace: "work")
   end
 
   test "should not access another user's remember" do

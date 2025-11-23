@@ -62,6 +62,9 @@ Rails.application.routes.draw do
   end
 
   resources :remembers do
+    collection do
+      get :display
+    end
     member do
       patch :pin
       patch :bump_up
