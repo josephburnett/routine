@@ -1,10 +1,10 @@
 # Routine Tracker
 
-A Ruby on Rails application for tracking personal routines through customizable forms, with powerful analytics, automated reporting, and encrypted backups.
+A Ruby on Rails application for tracking personal routines through customizable forms, with powerful analytics, automated reporting, memory support tools, and encrypted backups.
 
 ## Overview
 
-Routine Tracker helps you collect, organize, and analyze personal data through structured surveys and forms. Whether you're tracking pool maintenance, meditation habits, running miles, or any other routine data, this application provides the tools to capture information consistently and gain insights through metrics, alerts, and automated reports.
+Routine Tracker helps you collect, organize, and analyze personal data through structured surveys and forms. Whether you're tracking pool maintenance, meditation habits, running miles, or any other routine data, this application provides the tools to capture information consistently and gain insights through metrics, alerts, and automated reports. The Remember feature helps you maintain awareness of important reminders, values, and self-care practices through a gentle decay-based visibility system.
 
 > **Self-Hosted Only**: This is a personal data tracking application designed for self-hosting. I don't provide a hosted service and don't want your data - you run it yourself, you control your data completely.
 
@@ -29,9 +29,9 @@ Forms
 ### Analytics & Automation
 
 - **Metrics**: Transform raw data into time-series analytics with functions (answer, sum, average, difference, count), time resolutions (5min to monthly), and gap-filling strategies (none, zero, previous, linear)
-- **Alerts**: Smart monitoring with threshold-based notifications and configurable delays
-- **Reports**: Automated email reports with flexible scheduling and rich HTML formatting
-- **Backups**: Daily encrypted backups with manual testing capabilities
+- **Alerts**: Smart monitoring with threshold-based notifications (above, below, at_or_above, at_or_below) and configurable delays
+- **Reports**: Comprehensive dashboards delivered via email or viewed in-app, with flexible scheduling (daily, weekly, monthly) and rich HTML formatting
+- **Backups**: Encrypted backups with configurable frequency (daily, weekly, monthly) and manual testing capabilities
 
 ### Organization
 
@@ -57,9 +57,17 @@ Forms
 - Automated email reports with flexible scheduling (daily, weekly, monthly)
 
 ### 🔒 **Data Protection**
-- Daily encrypted backups sent to your email with unique encryption keys
+- Encrypted backups sent to your email with configurable frequency and unique encryption keys
 - Complete data isolation between users
 - Self-hosted with no external data sharing
+
+### 🧠 **Remember: Memory Support**
+- Gentle reminders for important thoughts, values, and self-care practices
+- Decay-based visibility: items gradually appear less frequently over time (configurable daily decay rate)
+- Three states: **Pinned** (always visible), **Floating** (probabilistic visibility based on decay value), **Retired** (archived)
+- Smart controls: bump items up/down to adjust visibility, pin important reminders
+- Namespace organization for categorizing different types of reminders
+- Deterministic daily visibility: same reminders appear consistently throughout each day
 
 ## Example Use Cases
 
@@ -106,6 +114,29 @@ Questions:
 - Track utility readings over time with trend analysis
 - Weekly report showing task completion rates
 
+### Memory Support with Remember
+```
+Remembers:
+├── self-care (namespace)
+│   ├── "Take a 5-minute break every hour" - floating reminder
+│   ├── "Drink water regularly" - pinned for constant visibility
+│   └── "Practice gratitude before bed" - floating with high decay
+├── values (namespace)
+│   ├── "Focus on what matters most" - floating reminder
+│   └── "Be kind to yourself" - pinned reminder
+└── tasks (namespace)
+    ├── "Review monthly goals" - floating, bumped up near month end
+    └── "Check backup system" - floating weekly reminder
+```
+
+**How it works:**
+- **Pinned items** appear every day in your Remember display view
+- **Floating items** appear based on their decay value (0.0 to 1.0)
+- Items with decay 0.8 appear ~80% of days, decay 0.3 appears ~30% of days
+- Use **bump up** to double visibility when something needs more attention
+- Use **bump down** to halve visibility for less critical reminders
+- **Retire** items when they're no longer needed but you want to keep them archived
+
 ## Getting Started
 
 ### Installation
@@ -136,7 +167,8 @@ Questions:
 3. **Create Metrics** - Transform questions into analytics with time-series visualization
 4. **Set Alerts** - Get notified when routines are missed (e.g., filter not cleaned for 3+ days)
 5. **Create Reports** - Schedule automated email reports with metrics and alerts
-6. **Configure Automation** - Enable backups and create reports in Settings
+6. **Add Remembers** - Create gentle reminders for self-care, values, or important tasks
+7. **Configure Automation** - Enable backups and create reports in Settings
 
 ### Production Deployment
 
@@ -163,6 +195,7 @@ User → Forms → Sections → Questions → Answers
 User → Metrics (analyze Questions)
 User → Alerts (monitor Metrics)
 User → Reports (schedule Metrics + Alerts)
+User → Remembers (memory support with decay)
 ```
 
 ## Contributing
