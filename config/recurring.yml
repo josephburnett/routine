@@ -1,4 +1,8 @@
 production:
+  decay_remembers:
+    class: DecayRemembersJob
+    queue: default
+    schedule: at midnight every day
   send_due_reports:
     class: SendDueReportsJob
     queue: default
