@@ -70,9 +70,13 @@
                         <%= item.display_name %>
                       <% when 'Alerts' %>
                         <%= item.display_name %>
+                      <% when 'Reports' %>
+                        <%= item.name.present? ? item.name : "Report ##{item.id}" %>
+                      <% when 'Remembers' %>
+                        <%= item.description.present? ? item.description.truncate(60) : "Remember ##{item.id}" %>
                       <% end %>
                     </h4>
-                    
+
                     <% case entity_type %>
                     <% when 'Forms' %>
                       <p><%= pluralize(item.sections.count, 'section') %> • <%= pluralize(item.responses.count, 'response') %></p>
@@ -88,8 +92,12 @@
                       <p>Function: <%= item.function.capitalize %></p>
                     <% when 'Alerts' %>
                       <p>Metric: <%= item.metric.display_name %> • <%= item.direction.capitalize %> <%= item.threshold %></p>
+                    <% when 'Reports' %>
+                      <p>Interval: <%= item.interval_type.capitalize %> • <%= pluralize(item.metrics.count, 'metric') %> • <%= pluralize(item.alerts.count, 'alert') %></p>
+                    <% when 'Remembers' %>
+                      <p>State: <%= item.state.capitalize %> • Decay: <%= (item.decay * 100).round %>%</p>
                     <% end %>
-                    
+
                     <p><strong>Created:</strong> <%= item.created_at.strftime("%B %d, %Y") %></p>
                   </div>
                 </label>
