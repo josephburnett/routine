@@ -25,6 +25,10 @@ class Question < ApplicationRecord
     (range_min.to_i..range_max.to_i).to_a
   end
 
+  def in_any_section?
+    sections.exists?
+  end
+
   private
 
   def range_min_less_than_max

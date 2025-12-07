@@ -12,4 +12,8 @@ class Section < ApplicationRecord
   def soft_delete!
     update!(deleted: true)
   end
+
+  def attached_to_any_form?
+    forms.exists?
+  end
 end

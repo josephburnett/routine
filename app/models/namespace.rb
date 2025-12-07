@@ -9,7 +9,7 @@ class Namespace
     namespaces = Set.new
 
     # Collect all namespaces from all namespaceable models
-    [ Form, Section, Question, Answer, Response, Metric, Alert, Remember ].each do |model|
+    [ Form, Section, Question, Answer, Response, Metric, Alert, Report, Remember ].each do |model|
       namespaces.merge(model.namespaces_for_user(user))
     end
 
@@ -40,7 +40,7 @@ class Namespace
     all_namespaces = all_for_user(user).map(&:name)
 
     # Direct existence: has entities in this exact namespace
-    has_direct_entities = [ Form, Section, Question, Answer, Response, Metric, Alert, Remember ].any? do |model|
+    has_direct_entities = [ Form, Section, Question, Answer, Response, Metric, Alert, Report, Remember ].any? do |model|
       model.where(user: user, namespace: namespace_name).exists?
     end
 
@@ -113,9 +113,14 @@ class Namespace
         [ "Responses", Response ],
         [ "Metrics", Metric ],
         [ "Alerts", Alert ],
+        [ "Reports", Report ],
         [ "Remembers", Remember ]
       ].each do |label, model|
         items = model.where(user: user, namespace: name).not_deleted
+
+        # Filter out entities that should be hidden based on visibility rules
+        items = filter_hidden_entities(label, items)
+
         entities[label] = items if items.any?
       end
       entities
@@ -179,5 +184,27 @@ class Namespace
 
   def ==(other)
     other.is_a?(Namespace) && name == other.name && user_id == other.user_id
+  end
+
+  private
+
+  def filter_hidden_entities(label, items)
+    case label
+    when "Answers"
+      # Hide all Answers - they should always follow Questions
+      []
+    when "Responses"
+      # Hide all Responses - they should always follow Forms
+      []
+    when "Questions"
+      # Hide Questions that belong to any Section
+      items.reject(&:in_any_section?)
+    when "Sections"
+      # Hide Sections that belong to any Form
+      items.reject(&:attached_to_any_form?)
+    else
+      # Show all other entity types (Forms, Metrics, Alerts, Remembers)
+      items
+    end
   end
 end
