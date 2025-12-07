@@ -73,7 +73,7 @@
 <% if activated_alerts_with_messages.any? %>
   <div class="card" style="margin-bottom: 1.5rem;">
     <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Alert Messages</h3>
-    
+
     <% activated_alerts_with_messages.each do |alert| %>
       <div style="margin-bottom: 1rem; padding: 0.75rem; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
         <div style="font-weight: bold; margin-bottom: 0.5rem; color: #856404;">
@@ -84,6 +84,35 @@
         </div>
       </div>
     <% end %>
+  </div>
+<% end %>
+
+<!-- Remembers Section -->
+<% if defined?(@visible_remembers) && @visible_remembers.any? %>
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">
+      Remembers from <%= @report.remember_namespace.present? ? @report.remember_namespace : "Root" %>
+      (<%= @visible_remembers.count %>)
+    </h3>
+
+    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+      <% @visible_remembers.each do |remember| %>
+        <div style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;">
+          <% if local_assigns[:email_mode] %>
+            <a href="<%= remember_url(remember) %>" style="text-decoration: none; color: inherit;">
+              <%= remember.description %>
+            </a>
+          <% else %>
+            <%= link_to remember.description, remember_path(remember), style: "text-decoration: none; color: inherit;" %>
+          <% end %>
+          <% if remember.namespace.present? && remember.namespace != @report.remember_namespace %>
+            <span style="color: #999; font-size: 0.75rem; margin-left: 0.5rem;">
+              [<%= remember.namespace %>]
+            </span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
   </div>
 <% end %>
 

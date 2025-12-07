@@ -32,9 +32,16 @@ class ReportsController < ApplicationController
       }
     end
 
+    # Load visible Remembers if remember_namespace is set
+    if @report.remember_namespace.present?
+      @visible_remembers = Remember.visible_today_recursive(current_user, @report.remember_namespace)
+    else
+      @visible_remembers = []
+    end
+
     # Basic report status without expensive calculations
     @report_status = {
-      has_content: @report.metrics.any? || @report.alerts.any?,  # Simple check
+      has_content: @report.metrics.any? || @report.alerts.any? || @visible_remembers.any?,
       should_send: false,  # Skip expensive should_send_now check
       active_alerts_count: 0  # Skip expensive activation checks
     }
@@ -176,7 +183,7 @@ class ReportsController < ApplicationController
   end
 
   def report_params
-    params.require(:report).permit(:name, :time_of_day, :interval_type, :namespace, interval_config: {})
+    params.require(:report).permit(:name, :time_of_day, :interval_type, :namespace, :remember_namespace, interval_config: {})
   end
 
   def safe_has_content_to_send?

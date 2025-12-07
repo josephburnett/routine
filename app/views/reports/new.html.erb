@@ -86,6 +86,21 @@
         <small style="display: block; color: #666; margin-top: 0.5rem;">Metrics will show recent data summary</small>
       </div>
 
+      <div class="field">
+        <%= form.label :remember_namespace, "Remembers from Namespace" %>
+        <%= form.text_field :remember_namespace,
+            placeholder: "e.g., work or work.projects (leave empty for none)",
+            list: "namespace-options" %>
+        <datalist id="namespace-options">
+          <% all_namespaces_for_user(current_user).each do |namespace| %>
+            <option value="<%= namespace %>"><%= namespace %></option>
+          <% end %>
+        </datalist>
+        <small style="display: block; color: #666; margin-top: 0.25rem;">
+          Show visible Remembers from this namespace and all its sub-namespaces (based on decay values)
+        </small>
+      </div>
+
       <div class="actions">
         <%= form.submit "Create Report" %>
       </div>

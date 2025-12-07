@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_23_163632) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_07_193650) do
   create_table "alert_status_caches", force: :cascade do |t|
     t.integer "alert_id", null: false
     t.boolean "is_activated", default: false
@@ -199,6 +199,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_23_163632) do
     t.string "namespace"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "remember_namespace"
     t.index ["user_id"], name: "index_reports_on_user_id"
   end
 
