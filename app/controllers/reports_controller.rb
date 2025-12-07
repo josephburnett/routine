@@ -32,11 +32,13 @@ class ReportsController < ApplicationController
       }
     end
 
-    # Load visible Remembers if remember_namespace is set
-    if @report.remember_namespace.present?
-      @visible_remembers = Remember.visible_today_recursive(current_user, @report.remember_namespace)
-    else
+    # Load visible Remembers if remember_namespace is set (nil = None, "" = Root, "namespace" = specific namespace)
+    if @report.remember_namespace.nil?
+      # nil means "None" - don't show Remembers
       @visible_remembers = []
+    else
+      # Empty string ("") means Root namespace, otherwise use the specified namespace
+      @visible_remembers = Remember.visible_today_recursive(current_user, @report.remember_namespace)
     end
 
     # Basic report status without expensive calculations
