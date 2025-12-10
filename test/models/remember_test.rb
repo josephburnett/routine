@@ -81,27 +81,98 @@ class RememberTest < ActiveSupport::TestCase
     assert results.all? { |r| r == results.first }, "visible_today? should be stable within same day"
   end
 
-  test "apply_decay! subtracts daily decay (default 0.05)" do
+  test "apply_decay! subtracts daily decay with jitter (default 0.05 ± 20%)" do
     remember = remembers(:floating_high)
+    remember.update!(decay: 0.9)  # High enough to not hit floor
     original_decay = remember.decay
 
     remember.apply_decay!
-    assert_in_delta original_decay - 0.05, remember.decay, 0.001
+    # With 20% jitter, decay should be between 0.04 and 0.06
+    decay_amount = original_decay - remember.decay
+    assert_in_delta 0.05, decay_amount, 0.015  # 0.05 ± 0.01 (allowing for 20% jitter)
   end
 
-  test "apply_decay! does not go below min decay (default 0.01)" do
+  test "apply_decay! does not go below hard min decay (default 0.01)" do
     remember = remembers(:floating_low)
-    remember.update!(decay: 0.03)  # 0.03 - 0.05 = -0.02, should clamp to 0.01
+    remember.update!(decay: 0.02)  # Below soft min, but should still clamp to hard min
+
+    # Force decay by setting a very low personal floor
+    user = remember.user
+    user.create_user_setting!(
+      remember_daily_decay: 0.05,
+      remember_min_decay: 0.01,
+      remember_soft_min_decay: 0.01,  # Same as hard min, so floor is always 0.01
+      remember_decay_jitter: 0.0,
+      backup_frequency: "daily"
+    )
 
     remember.apply_decay!
     assert_equal 0.01, remember.decay
+
+    user.user_setting.destroy
+  end
+
+  test "apply_decay! stops at personal_decay_floor" do
+    user = users(:one)
+    user.create_user_setting!(
+      remember_daily_decay: 0.05,
+      remember_min_decay: 0.01,
+      remember_soft_min_decay: 0.10,
+      remember_decay_jitter: 0.0,
+      backup_frequency: "daily"
+    )
+
+    remember = remembers(:floating_high)
+    floor = remember.personal_decay_floor
+
+    # Set decay just above floor
+    remember.update!(decay: floor + 0.01)
+    remember.apply_decay!
+    # Should have decayed
+    assert remember.decay < floor + 0.01
+
+    # Now set decay at floor - should not decay further
+    remember.update!(decay: floor)
+    original = remember.decay
+    remember.apply_decay!
+    assert_equal original, remember.decay
+
+    user.user_setting.destroy
+  end
+
+  test "personal_decay_floor is between hard and soft min" do
+    user = users(:one)
+    user.create_user_setting!(
+      remember_daily_decay: 0.05,
+      remember_min_decay: 0.01,
+      remember_soft_min_decay: 0.10,
+      remember_decay_jitter: 0.0,
+      backup_frequency: "daily"
+    )
+
+    remember = remembers(:floating_high)
+    floor = remember.personal_decay_floor
+
+    assert floor >= 0.01, "Floor should be >= hard min"
+    assert floor <= 0.10, "Floor should be <= soft min"
+
+    user.user_setting.destroy
+  end
+
+  test "personal_decay_floor is stable for same remember" do
+    remember = remembers(:floating_high)
+
+    floors = 10.times.map { remember.personal_decay_floor }
+    assert floors.all? { |f| f == floors.first }, "personal_decay_floor should be stable"
   end
 
   test "apply_decay! uses user settings when available" do
     user = users(:one)
     user.create_user_setting!(
       remember_daily_decay: 0.1,
-      remember_min_decay: 0.05,
+      remember_min_decay: 0.02,
+      remember_soft_min_decay: 0.02,  # Same as hard to simplify test
+      remember_decay_jitter: 0.0,     # No jitter for predictable test
       backup_frequency: "daily"
     )
 
@@ -111,10 +182,10 @@ class RememberTest < ActiveSupport::TestCase
     remember.apply_decay!
     assert_in_delta 0.4, remember.decay, 0.001  # 0.5 - 0.1 = 0.4
 
-    # Test min decay from settings
-    remember.update!(decay: 0.08)
+    # Test hard min decay from settings
+    remember.update!(decay: 0.05)
     remember.apply_decay!
-    assert_equal 0.05, remember.decay  # 0.08 - 0.1 = -0.02, clamped to 0.05 (user's min)
+    assert_equal 0.02, remember.decay  # 0.05 - 0.1 = -0.05, clamped to 0.02 (user's hard min)
 
     user.user_setting.destroy
   end
@@ -181,6 +252,7 @@ class RememberTest < ActiveSupport::TestCase
     user.create_user_setting!(
       remember_daily_decay: 0.05,
       remember_min_decay: 0.1,
+      remember_soft_min_decay: 0.1,
       backup_frequency: "daily"
     )
 

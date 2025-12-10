@@ -36,16 +36,42 @@ class Remember < ApplicationRecord
     threshold < decay
   end
 
-  # Apply daily decay - subtract daily_decay, with minimum of min_decay
-  # Uses user settings if available, otherwise defaults (0.05 daily, 0.01 min)
+  # Apply daily decay with jitter to prevent thundering herd
+  # - Adds random jitter to decay amount (±jitter%)
+  # - Stops decaying at personal_decay_floor (between soft and hard min)
+  # - Hard minimum is an invariant floor
   def apply_decay!
     return if state == "pinned" || state == "retired"
 
-    daily_decay = user.user_setting&.remember_daily_decay || 0.05
-    min_decay = user.user_setting&.remember_min_decay || 0.01
+    settings = user.user_setting
+    daily_decay = settings&.remember_daily_decay || 0.05
+    hard_min = settings&.remember_min_decay || 0.01
+    jitter = settings&.remember_decay_jitter || 0.2
 
-    new_decay = [ decay - daily_decay, min_decay ].max
+    # Stop decaying if we've reached this remember's personal floor
+    return if decay <= personal_decay_floor
+
+    # Apply jittered decay: vary by ±jitter (e.g., ±20%)
+    jitter_factor = 1.0 + (rand * 2 - 1) * jitter
+    actual_decay = daily_decay * jitter_factor
+
+    # Clamp to hard minimum (invariant)
+    new_decay = [ decay - actual_decay, hard_min ].max
     update!(decay: new_decay)
+  end
+
+  # Each remember has a personal floor between hard_min and soft_min
+  # Based on ID hash for stable, distributed stopping points
+  def personal_decay_floor
+    settings = user.user_setting
+    hard_min = settings&.remember_min_decay || 0.01
+    soft_min = settings&.remember_soft_min_decay || 0.05
+
+    # Create a stable value between 0 and 1 based on this remember's ID
+    hash_value = (id.to_s.hash.abs % 10000) / 10000.0
+
+    # Interpolate between hard_min and soft_min
+    hard_min + (soft_min - hard_min) * hash_value
   end
 
   # Pin this remember - always visible at top
