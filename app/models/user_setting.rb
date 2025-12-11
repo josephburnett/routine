@@ -11,10 +11,20 @@ class UserSetting < ApplicationRecord
   # Remember decay settings validations
   validates :remember_daily_decay, numericality: { greater_than: 0.0, less_than_or_equal_to: 1.0 }
   validates :remember_min_decay, numericality: { greater_than_or_equal_to: 0.0, less_than: 1.0 }
+  validates :remember_soft_min_decay, numericality: { greater_than_or_equal_to: 0.0, less_than_or_equal_to: 1.0 }
+  validates :remember_decay_jitter, numericality: { greater_than_or_equal_to: 0.0, less_than_or_equal_to: 1.0 }
+  validate :soft_min_greater_than_hard_min
 
   before_create :generate_encryption_key, if: :backup_enabled?
 
   private
+
+  def soft_min_greater_than_hard_min
+    return unless remember_soft_min_decay && remember_min_decay
+    if remember_soft_min_decay < remember_min_decay
+      errors.add(:remember_soft_min_decay, "must be greater than or equal to hard minimum (remember_min_decay)")
+    end
+  end
 
   def generate_encryption_key
     self.encryption_key = SecureRandom.base64(32) # 256-bit key
