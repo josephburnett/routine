@@ -2,7 +2,7 @@ class RemembersController < ApplicationController
   include NamespaceBrowsing
 
   before_action :require_login
-  before_action :find_remember, only: [ :show, :edit, :update, :soft_delete, :pin, :bump_up, :bump_down, :retire ]
+  before_action :find_remember, only: [ :show, :edit, :update, :soft_delete, :pin, :float, :bump_up, :bump_down, :retire, :set_decay ]
 
   def index
     setup_namespace_browsing(Remember, :remembers_path)
@@ -54,7 +54,19 @@ class RemembersController < ApplicationController
 
   def pin
     @remember.pin!
-    redirect_back_to_list("Remember pinned")
+    redirect_back_to_list("Remember pinned (decay: #{format('%.2f', @remember.decay)})")
+  end
+
+  def float
+    @remember.float!
+    redirect_back_to_list("Remember floating (decay: #{format('%.2f', @remember.decay)})")
+  end
+
+  def set_decay
+    min_decay = current_user.user_setting&.remember_min_decay || 0.01
+    decay_value = params[:decay].to_f.clamp(min_decay, 1.0)
+    @remember.set_decay!(decay_value)
+    redirect_to @remember, notice: "Decay set to #{format('%.2f', decay_value)} and pinned"
   end
 
   def bump_up

@@ -66,13 +66,62 @@ class RemembersControllerTest < ActionDispatch::IntegrationTest
     assert remember.deleted
   end
 
-  test "should pin remember" do
+  test "should pin remember and preserve decay" do
     remember = remembers(:floating_high)
+    remember.update!(decay: 0.7)
+    original_decay = remember.decay
+
     patch pin_remember_path(remember)
     assert_redirected_to remembers_path(namespace: remember.namespace)
     remember.reload
     assert_equal "pinned", remember.state
-    assert_equal 1.0, remember.decay
+    assert_equal original_decay, remember.decay
+  end
+
+  test "should float remember" do
+    remember = remembers(:pinned_remember)
+    remember.update!(decay: 0.6)
+    original_decay = remember.decay
+
+    patch float_remember_path(remember)
+    assert_redirected_to remembers_path(namespace: remember.namespace)
+    remember.reload
+    assert_equal "floating", remember.state
+    assert_equal original_decay, remember.decay
+  end
+
+  test "should set decay and pin" do
+    remember = remembers(:floating_high)
+
+    patch set_decay_remember_path(remember), params: { decay: 0.42 }
+    assert_redirected_to remember_path(remember)
+    remember.reload
+    assert_equal "pinned", remember.state
+    assert_in_delta 0.42, remember.decay, 0.001
+  end
+
+  test "set_decay clamps to min/max" do
+    user = users(:one)
+    user.create_user_setting!(
+      remember_daily_decay: 0.05,
+      remember_min_decay: 0.1,
+      remember_soft_min_decay: 0.1,
+      backup_frequency: "daily"
+    )
+
+    remember = remembers(:floating_high)
+
+    # Test clamping below min
+    patch set_decay_remember_path(remember), params: { decay: 0.01 }
+    remember.reload
+    assert_equal 0.1, remember.decay  # Clamped to min
+
+    # Test clamping above max
+    patch set_decay_remember_path(remember), params: { decay: 1.5 }
+    remember.reload
+    assert_equal 1.0, remember.decay  # Clamped to max
+
+    user.user_setting.destroy
   end
 
   test "should bump up remember" do

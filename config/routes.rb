@@ -67,9 +67,11 @@ Rails.application.routes.draw do
     end
     member do
       patch :pin
+      patch :float
       patch :bump_up
       patch :bump_down
       patch :retire
+      patch :set_decay
       patch :soft_delete
     end
   end

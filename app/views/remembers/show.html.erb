@@ -16,6 +16,9 @@
       <%= link_to "📌 Pin", pin_remember_path(@remember),
           data: { "turbo-method": :patch },
           class: "btn btn-secondary" %>
+      <%= link_to "🔄 Float", float_remember_path(@remember),
+          data: { "turbo-method": :patch },
+          class: "btn btn-secondary" %>
       <%= link_to "⬆ Bump Up", bump_up_remember_path(@remember),
           data: { "turbo-method": :patch },
           class: "btn btn-secondary" %>
@@ -28,15 +31,38 @@
       <span style="margin-left: auto; color: var(--text-secondary);">
         <% case @remember.state %>
         <% when "pinned" %>
-          📌 Pinned
+          📌 Pinned (<%= format('%.2f', @remember.decay) %>)
         <% when "floating" %>
-          Decay: <%= format('%.2f', @remember.decay) %>
+          🔄 Floating (<%= format('%.2f', @remember.decay) %>)
         <% when "retired" %>
-          Retired
+          🗄 Retired
         <% end %>
       </span>
     </div>
   </div>
+
+  <% unless @remember.state == "retired" %>
+    <!-- Decay slider -->
+    <% min_decay = current_user.user_setting&.remember_min_decay || 0.01 %>
+    <div class="card">
+      <h3 style="margin: 0 0 0.5rem 0;">Set Decay</h3>
+      <%= form_with url: set_decay_remember_path(@remember), method: :patch, local: true do |f| %>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="min-width: 2.5rem; text-align: right;"><%= min_decay %></span>
+          <%= range_field_tag :decay, @remember.decay,
+              min: min_decay,
+              max: 1.0,
+              step: 0.01,
+              id: "decay-slider",
+              style: "flex: 1;",
+              oninput: "document.getElementById('decay-value').textContent = parseFloat(this.value).toFixed(2)" %>
+          <span style="min-width: 2rem;">1.0</span>
+          <span id="decay-value" style="min-width: 2.5rem; font-weight: bold;"><%= format('%.2f', @remember.decay) %></span>
+          <%= submit_tag "Set & Pin", class: "btn btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
 
   <% if @remember.background.present? %>
     <div class="card">

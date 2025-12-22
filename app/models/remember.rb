@@ -74,9 +74,21 @@ class Remember < ApplicationRecord
     hard_min + (soft_min - hard_min) * hash_value
   end
 
-  # Pin this remember - always visible at top
+  # Pin this remember - freeze decay at current value
   def pin!
-    update!(state: "pinned", decay: 1.0)
+    update!(state: "pinned")
+  end
+
+  # Float this remember - resume daily decay
+  def float!
+    min_decay = user.user_setting&.remember_min_decay || 0.01
+    new_decay = [ decay, min_decay ].max
+    update!(state: "floating", decay: new_decay)
+  end
+
+  # Set decay to specific value and pin
+  def set_decay!(value)
+    update!(state: "pinned", decay: value)
   end
 
   # Bump up - double the decay (max 1.0), set to floating

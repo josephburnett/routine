@@ -206,12 +206,51 @@ class RememberTest < ActiveSupport::TestCase
     assert_equal original_decay, remember.decay
   end
 
-  test "pin! sets state to pinned and decay to 1.0" do
+  test "pin! sets state to pinned and preserves current decay" do
     remember = remembers(:floating_low)
+    remember.update!(decay: 0.5)
+    original_decay = remember.decay
 
     remember.pin!
     assert_equal "pinned", remember.state
-    assert_equal 1.0, remember.decay
+    assert_equal original_decay, remember.decay
+  end
+
+  test "float! sets state to floating and preserves decay" do
+    remember = remembers(:pinned_remember)
+    remember.update!(decay: 0.7)
+    original_decay = remember.decay
+
+    remember.float!
+    assert_equal "floating", remember.state
+    assert_equal original_decay, remember.decay
+  end
+
+  test "float! sets decay to min_decay if below minimum" do
+    user = users(:one)
+    user.create_user_setting!(
+      remember_daily_decay: 0.05,
+      remember_min_decay: 0.1,
+      remember_soft_min_decay: 0.1,
+      backup_frequency: "daily"
+    )
+
+    remember = remembers(:retired_remember)
+    # Retired has decay 0.0, which is below min
+
+    remember.float!
+    assert_equal "floating", remember.state
+    assert_equal 0.1, remember.decay  # Should be set to min_decay
+
+    user.user_setting.destroy
+  end
+
+  test "set_decay! sets decay value and pins" do
+    remember = remembers(:floating_high)
+
+    remember.set_decay!(0.42)
+    assert_equal "pinned", remember.state
+    assert_equal 0.42, remember.decay
   end
 
   test "bump_up! doubles decay up to 1.0" do
