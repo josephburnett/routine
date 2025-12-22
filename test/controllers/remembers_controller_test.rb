@@ -90,13 +90,14 @@ class RemembersControllerTest < ActionDispatch::IntegrationTest
     assert_equal original_decay, remember.decay
   end
 
-  test "should set decay and pin" do
+  test "should set decay without changing state" do
     remember = remembers(:floating_high)
+    original_state = remember.state
 
     patch set_decay_remember_path(remember), params: { decay: 0.42 }
     assert_redirected_to remember_path(remember)
     remember.reload
-    assert_equal "pinned", remember.state
+    assert_equal original_state, remember.state
     assert_in_delta 0.42, remember.decay, 0.001
   end
 

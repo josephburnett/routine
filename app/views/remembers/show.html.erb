@@ -58,7 +58,7 @@
               oninput: "document.getElementById('decay-value').textContent = parseFloat(this.value).toFixed(2)" %>
           <span style="min-width: 2rem;">1.0</span>
           <span id="decay-value" style="min-width: 2.5rem; font-weight: bold;"><%= format('%.2f', @remember.decay) %></span>
-          <%= submit_tag "Set & Pin", class: "btn btn-primary" %>
+          <%= submit_tag "Set", class: "btn btn-primary" %>
         </div>
       <% end %>
     </div>

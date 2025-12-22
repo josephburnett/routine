@@ -86,9 +86,9 @@ class Remember < ApplicationRecord
     update!(state: "floating", decay: new_decay)
   end
 
-  # Set decay to specific value and pin
+  # Set decay to specific value
   def set_decay!(value)
-    update!(state: "pinned", decay: value)
+    update!(decay: value)
   end
 
   # Bump up - double the decay (max 1.0), set to floating

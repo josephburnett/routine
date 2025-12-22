@@ -66,7 +66,7 @@ class RemembersController < ApplicationController
     min_decay = current_user.user_setting&.remember_min_decay || 0.01
     decay_value = params[:decay].to_f.clamp(min_decay, 1.0)
     @remember.set_decay!(decay_value)
-    redirect_to @remember, notice: "Decay set to #{format('%.2f', decay_value)} and pinned"
+    redirect_to @remember, notice: "Decay set to #{format('%.2f', decay_value)}"
   end
 
   def bump_up

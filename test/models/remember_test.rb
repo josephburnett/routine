@@ -245,11 +245,12 @@ class RememberTest < ActiveSupport::TestCase
     user.user_setting.destroy
   end
 
-  test "set_decay! sets decay value and pins" do
+  test "set_decay! sets decay value without changing state" do
     remember = remembers(:floating_high)
+    original_state = remember.state
 
     remember.set_decay!(0.42)
-    assert_equal "pinned", remember.state
+    assert_equal original_state, remember.state
     assert_equal 0.42, remember.decay
   end
 
