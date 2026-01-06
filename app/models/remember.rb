@@ -22,8 +22,8 @@ class Remember < ApplicationRecord
 
   # Determines if this remember should be visible today
   # Uses a seeded hash to ensure stable visibility per day
+  # Pinned items use their decay value (frozen), floating items decay daily
   def visible_today?
-    return true if state == "pinned"
     return false if state == "retired" || decay == 0.0
 
     # Create a daily seed from the Remember ID and today's date

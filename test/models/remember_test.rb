@@ -56,9 +56,14 @@ class RememberTest < ActiveSupport::TestCase
     assert_not_includes active, remembers(:retired_remember)
   end
 
-  test "visible_today? always returns true for pinned" do
+  test "visible_today? uses decay value for pinned items" do
     remember = remembers(:pinned_remember)
+    # With decay 1.0, should always be visible
     assert remember.visible_today?
+
+    # With decay 0.0, should not be visible (pinned doesn't bypass decay check)
+    remember.decay = 0.0
+    assert_not remember.visible_today?
   end
 
   test "visible_today? always returns false for retired" do
