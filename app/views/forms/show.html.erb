@@ -33,26 +33,6 @@
   </div>
 
   <div class="card">
-    <h2>Responses</h2>
-
-    <% if @form.responses.not_deleted.any? %>
-      <div class="index-grid">
-        <% @form.responses.not_deleted.each do |response| %>
-          <div class="index-card">
-            <h3><%= link_to "Response ##{response.id}", response_path(response) %></h3>
-            <p><%= response.created_at.strftime("%B %d, %Y at %I:%M %p") %> • <%= pluralize(response.answers.count, 'answer') %></p>
-            <div class="index-card-actions">
-              <%= link_to "View", response_path(response) %>
-            </div>
-          </div>
-        <% end %>
-      </div>
-    <% else %>
-      <p>No responses yet. Share the form link to start collecting responses.</p>
-    <% end %>
-  </div>
-
-  <div class="card">
     <h3>Add New Section</h3>
 
     <%= form_with model: [@form, @section], local: true, data: { turbo: false } do |form| %>
