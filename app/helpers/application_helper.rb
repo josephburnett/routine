@@ -97,6 +97,9 @@ module ApplicationHelper
 
   def entities_in_allowed_namespaces(model_class, current_namespace)
     allowed_namespaces = allowed_namespaces_for_selection(current_namespace)
-    model_class.where(user: current_user, namespace: allowed_namespaces).not_deleted
+    result = model_class.where(user: current_user, namespace: allowed_namespaces).not_deleted
+    # Sort questions by namespace then name for easier selection
+    result = result.sorted_by_namespace_and_name if model_class == Question
+    result
   end
 end

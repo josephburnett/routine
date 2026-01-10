@@ -1,0 +1,45 @@
+<%= @report.name || "Report ##{@report.id}" %>
+<%= @report.interval_type.capitalize %> at <%= @report.time_of_day&.strftime("%H:%M") || "Not set" %>
+
+<% if @active_alerts.any? -%>
+ACTIVE ALERTS
+<% @active_alerts.each do |alert| -%>
+<% series_data = alert.metric.series -%>
+<% latest_value = series_data.any? ? series_data.last[1]&.round(2) : "N/A" -%>
+- <%= alert.display_name %>: <%= latest_value %> (<%= alert.direction %> <%= alert.threshold %>)
+<% if alert.message.present? -%>
+  > <%= alert.message.gsub("\n", "\n  > ") %>
+<% end -%>
+<% end -%>
+
+<% end -%>
+<% if @report.alerts.any? -%>
+ALERTS (<%= @report.alerts.count %>)
+<% @report.alerts.each do |alert| -%>
+<% series_data = alert.metric.series -%>
+<% latest_value = series_data.any? ? series_data.last[1]&.round(2) : "N/A" -%>
+- <%= alert.display_name %>: <%= latest_value %> (<%= alert.direction %> <%= alert.threshold %>, <%= alert.delay %>d delay)
+<% end -%>
+
+<% end -%>
+<% if defined?(@visible_remembers) && @visible_remembers.any? -%>
+REMEMBERS (<%= @visible_remembers.count %>)
+<% @visible_remembers.each do |remember| -%>
+- <%= remember.description %>
+<% end -%>
+
+<% end -%>
+<% if @metric_summaries.any? -%>
+METRICS (<%= @metric_summaries.count %>)
+<% @metric_summaries.each do |summary| -%>
+- <%= summary[:metric].display_name %>: <%= summary[:latest_value]&.round(2) || "N/A" %> (<%= summary[:time_range] %>)
+<% end -%>
+
+<% end -%>
+<% if @report.alerts.empty? && @report.metrics.empty? -%>
+No alerts or metrics configured for this report.
+
+<% end -%>
+---
+Open Routine Tracker: <%= root_url %>
+Manage Reports: <%= reports_url %>

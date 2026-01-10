@@ -73,7 +73,7 @@
       <%= form_with url: add_question_section_path(@section), method: :patch, local: true do |form| %>
         <div class="field">
           <%= form.label :question_id, "Select Question" %>
-          <%= form.select :question_id, options_from_collection_for_select(@available_questions, :id, :name), { prompt: 'Choose a question' }, { required: true } %>
+          <%= form.select :question_id, options_from_collection_for_select(@available_questions, :id, :name_with_namespace), { prompt: 'Choose a question' }, { required: true } %>
         </div>
 
         <div class="actions">

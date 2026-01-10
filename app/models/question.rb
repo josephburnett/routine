@@ -15,6 +15,11 @@ class Question < ApplicationRecord
   has_many :metrics, through: :metric_questions
 
   scope :not_deleted, -> { where(deleted: false) }
+  scope :sorted_by_namespace_and_name, -> { order(:namespace, :name) }
+
+  def name_with_namespace
+    namespace.present? ? "#{namespace}: #{name}" : name
+  end
 
   def soft_delete!
     update!(deleted: true)

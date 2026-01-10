@@ -111,24 +111,34 @@
       <div class="card">
         <div class="form-group">
           <%= form.label :target_namespace, "Move selected items to:" %>
-          <input type="text" 
-                 name="target_namespace" 
+          <input type="text"
+                 name="target_namespace"
                  id="target_namespace"
                  class="form-control namespace-input"
                  list="namespace-options"
                  placeholder="Enter namespace or select from list (leave empty for Root)">
-          
+
           <datalist id="namespace-options">
             <% all_namespaces_for_user(current_user).each do |namespace| %>
               <option value="<%= namespace %>"><%= namespace %></option>
             <% end %>
           </datalist>
-          
+
           <small class="form-text text-muted">
             Use dot notation like "work.projects" or leave empty for Root namespace.
           </small>
         </div>
-        
+
+        <div class="form-group" style="margin-top: 1rem;">
+          <label style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" name="skip_cascade" value="1">
+            Don't move child items (Sections, Questions, etc.)
+          </label>
+          <small class="form-text text-muted">
+            When checked, only the selected items will move. Related items stay in their current namespace.
+          </small>
+        </div>
+
         <div class="actions">
           <%= form.submit "Move Selected Items", class: "btn btn-primary" %>
         </div>

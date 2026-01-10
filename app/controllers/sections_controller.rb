@@ -11,7 +11,8 @@ class SectionsController < ApplicationController
 
   def show
     @question = Question.new
-    @available_questions = current_user.questions.not_deleted - @section.questions
+    @available_questions = (current_user.questions.not_deleted - @section.questions)
+      .sort_by { |q| [ q.namespace.to_s, q.name.to_s ] }
   end
 
   def new

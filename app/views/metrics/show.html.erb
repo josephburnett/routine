@@ -81,7 +81,7 @@
           </tr>
         </thead>
         <tbody>
-          <% @series_data.each do |time, value| %>
+          <% @series_data.reverse.each do |time, value| %>
             <tr>
               <td>
                 <% case @metric.resolution %>

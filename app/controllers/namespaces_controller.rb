@@ -13,9 +13,11 @@ class NamespacesController < ApplicationController
       Rails.logger.info "Bulk move params: #{params.inspect}"
       target_namespace = params[:target_namespace] || ""
       entity_params = params[:entities] || {}
+      skip_cascade = params[:skip_cascade] == "1"
 
       Rails.logger.info "Target namespace: #{target_namespace.inspect}"
       Rails.logger.info "Entity params: #{entity_params.inspect}"
+      Rails.logger.info "Skip cascade: #{skip_cascade}"
 
       moved_count = 0
 
@@ -29,9 +31,9 @@ class NamespacesController < ApplicationController
 
         Rails.logger.info "Found #{entities.count} entities to update"
 
-        # Move entities and cascade to related entities
+        # Move entities and optionally cascade to related entities
         entities.each do |entity|
-          moved_count += move_entity_with_cascade(entity, target_namespace)
+          moved_count += move_entity_with_cascade(entity, target_namespace, skip_cascade)
         end
       end
 
@@ -50,15 +52,18 @@ class NamespacesController < ApplicationController
 
   private
 
-  def move_entity_with_cascade(entity, target_namespace)
+  def move_entity_with_cascade(entity, target_namespace, skip_cascade = false)
     count = 0
+
+    # Move the entity itself
+    entity.update!(namespace: target_namespace)
+    count += 1
+
+    # If skip_cascade is true, only move the selected entity
+    return count if skip_cascade
 
     case entity
     when Form
-      # Move the Form
-      entity.update!(namespace: target_namespace)
-      count += 1
-
       # Cascade: Move all Responses
       entity.responses.each do |response|
         response.update!(namespace: target_namespace)
@@ -90,10 +95,6 @@ class NamespacesController < ApplicationController
       end
 
     when Section
-      # Move the Section
-      entity.update!(namespace: target_namespace)
-      count += 1
-
       # Cascade: Move all Questions in this Section
       entity.questions.each do |question|
         question.update!(namespace: target_namespace)
@@ -107,21 +108,11 @@ class NamespacesController < ApplicationController
       end
 
     when Question
-      # Move the Question
-      entity.update!(namespace: target_namespace)
-      count += 1
-
       # Cascade: Move all Answers for this Question
       entity.answers.each do |answer|
         answer.update!(namespace: target_namespace)
         count += 1
       end
-
-    else
-      # For all other entity types (Metric, Alert, Report, Remember),
-      # just move the entity itself without cascading
-      entity.update!(namespace: target_namespace)
-      count += 1
     end
 
     count
