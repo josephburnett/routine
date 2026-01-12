@@ -41,7 +41,9 @@ class NamespacesController < ApplicationController
 
       if moved_count > 0
         target_display = target_namespace.present? ? target_namespace : "Root"
-        redirect_to namespace_path(@namespace), notice: "Successfully moved #{moved_count} #{'item'.pluralize(moved_count)} to #{target_display}"
+        # Redirect to target namespace so user can see their moved items
+        target_path = target_namespace.present? ? namespace_path(target_namespace) : namespace_path("root")
+        redirect_to target_path, notice: "Successfully moved #{moved_count} #{'item'.pluralize(moved_count)} to #{target_display}"
       else
         redirect_to namespace_path(@namespace), alert: "No items were selected for moving"
       end
@@ -121,7 +123,5 @@ class NamespacesController < ApplicationController
   def find_namespace
     namespace_name = params[:id] == "root" ? "" : params[:id]
     @namespace = Namespace.find_for_user(current_user, namespace_name)
-  rescue ActiveRecord::RecordNotFound
-    redirect_to namespace_path("root"), alert: "Namespace not found"
   end
 end

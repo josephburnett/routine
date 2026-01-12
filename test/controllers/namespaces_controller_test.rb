@@ -24,10 +24,10 @@ class NamespacesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "should return 404 for non-existent namespace" do
+  test "should show empty state for non-existent namespace" do
+    # Namespaces are implicit - visiting a non-existent one just shows empty state
     get namespace_path("nonexistent")
-    assert_redirected_to namespace_path("root")
-    assert_equal "Namespace not found", flash[:alert]
+    assert_response :success
   end
 
   # Test cascading moves for Forms
@@ -66,7 +66,8 @@ class NamespacesControllerTest < ActionDispatch::IntegrationTest
       }
     }
 
-    assert_redirected_to namespace_path("work")
+    # Redirects to target namespace so user can see their moved items
+    assert_redirected_to namespace_path("archive")
     assert_match(/Successfully moved \d+ items? to archive/, flash[:notice])
 
     # Verify all entities moved to new namespace
@@ -105,7 +106,8 @@ class NamespacesControllerTest < ActionDispatch::IntegrationTest
       }
     }
 
-    assert_redirected_to namespace_path("personal")
+    # Redirects to target namespace so user can see their moved items
+    assert_redirected_to namespace_path("work")
     assert_match(/Successfully moved \d+ items? to work/, flash[:notice])
 
     # Verify all entities moved
@@ -133,7 +135,8 @@ class NamespacesControllerTest < ActionDispatch::IntegrationTest
       }
     }
 
-    assert_redirected_to namespace_path("work")
+    # Redirects to target namespace so user can see their moved items
+    assert_redirected_to namespace_path("archive")
     assert_match(/Successfully moved \d+ items? to archive/, flash[:notice])
 
     # Verify all entities moved
@@ -157,7 +160,8 @@ class NamespacesControllerTest < ActionDispatch::IntegrationTest
       }
     }
 
-    assert_redirected_to namespace_path("work")
+    # Redirects to target namespace so user can see their moved items
+    assert_redirected_to namespace_path("personal")
 
     # Verify only metric moved, alert stayed in original namespace
     assert_equal "personal", metric.reload.namespace
@@ -298,7 +302,8 @@ class NamespacesControllerTest < ActionDispatch::IntegrationTest
       }
     }
 
-    assert_redirected_to namespace_path("work")
+    # Redirects to target namespace so user can see their moved items
+    assert_redirected_to namespace_path("personal")
     assert_match(/Successfully moved 1 item to personal/, flash[:notice])
 
     # Verify remember moved
@@ -364,7 +369,8 @@ class NamespacesControllerTest < ActionDispatch::IntegrationTest
       }
     }
 
-    assert_redirected_to namespace_path("work")
+    # Redirects to root namespace so user can see their moved items
+    assert_redirected_to namespace_path("root")
     assert_match(/Successfully moved \d+ items? to Root/, flash[:notice])
     assert_equal "", form.reload.namespace
   end

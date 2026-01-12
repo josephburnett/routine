@@ -31,27 +31,9 @@ class Namespace
   end
 
   def self.find_for_user(user, namespace_name)
-    # For root namespace, always allow it
-    if namespace_name.blank?
-      return new(name: "", user_id: user.id)
-    end
-
-    # Check if namespace exists either by having direct entities or by having child namespaces
-    all_namespaces = all_for_user(user).map(&:name)
-
-    # Direct existence: has entities in this exact namespace
-    has_direct_entities = [ Form, Section, Question, Answer, Response, Metric, Alert, Report, Remember ].any? do |model|
-      model.where(user: user, namespace: namespace_name).exists?
-    end
-
-    # Indirect existence: has child namespaces (is a valid intermediate folder)
-    has_child_namespaces = all_namespaces.any? { |ns| ns.start_with?("#{namespace_name}.") }
-
-    if has_direct_entities || has_child_namespaces
-      new(name: namespace_name, user_id: user.id)
-    else
-      raise ActiveRecord::RecordNotFound, "Namespace '#{namespace_name}' not found"
-    end
+    # Namespaces are implicit - they exist when you use them and disappear when empty.
+    # Any valid namespace string is allowed. Empty namespaces just show an empty state.
+    new(name: namespace_name.to_s.strip, user_id: user.id)
   end
 
   def self.namespace_folders_for_user(user, current_namespace = "")
