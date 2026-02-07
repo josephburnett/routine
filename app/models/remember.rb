@@ -93,14 +93,18 @@ class Remember < ApplicationRecord
 
   # Bump up - double the decay (max 1.0), set to floating
   def bump_up!
-    new_decay = [ decay * 2, 1.0 ].min
+    jitter = user.user_setting&.remember_decay_jitter || 0.2
+    jitter_factor = 1.0 + (rand * 2 - 1) * jitter
+    new_decay = [ decay * 2 * jitter_factor, 1.0 ].min
     update!(state: "floating", decay: new_decay)
   end
 
   # Bump down - halve the decay (min from user settings), set to floating if not already
   def bump_down!
     min_decay = user.user_setting&.remember_min_decay || 0.01
-    new_decay = [ decay / 2, min_decay ].max
+    jitter = user.user_setting&.remember_decay_jitter || 0.2
+    jitter_factor = 1.0 + (rand * 2 - 1) * jitter
+    new_decay = [ decay / 2 * jitter_factor, min_decay ].max
     update!(decay: new_decay)
     update!(state: "floating") unless state == "retired"
   end

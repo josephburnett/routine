@@ -131,7 +131,7 @@ class RemembersControllerTest < ActionDispatch::IntegrationTest
     patch bump_up_remember_path(remember)
     assert_redirected_to remembers_path(namespace: remember.namespace)
     remember.reload
-    assert_equal 0.6, remember.decay
+    assert_in_delta 0.6, remember.decay, 0.6 * 0.2
   end
 
   test "should bump down remember" do
@@ -140,7 +140,7 @@ class RemembersControllerTest < ActionDispatch::IntegrationTest
     patch bump_down_remember_path(remember)
     assert_redirected_to remembers_path(namespace: remember.namespace)
     remember.reload
-    assert_equal 0.2, remember.decay
+    assert_in_delta 0.2, remember.decay, 0.2 * 0.2
   end
 
   test "should retire remember" do

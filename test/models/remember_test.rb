@@ -264,7 +264,7 @@ class RememberTest < ActiveSupport::TestCase
     remember.update!(decay: 0.3)
 
     remember.bump_up!
-    assert_equal 0.6, remember.decay
+    assert_in_delta 0.6, remember.decay, 0.6 * 0.2
     assert_equal "floating", remember.state
   end
 
@@ -281,7 +281,7 @@ class RememberTest < ActiveSupport::TestCase
     remember.update!(decay: 0.4)
 
     remember.bump_down!
-    assert_equal 0.2, remember.decay
+    assert_in_delta 0.2, remember.decay, 0.2 * 0.2
   end
 
   test "bump_down! does not go below min decay (default 0.01)" do
