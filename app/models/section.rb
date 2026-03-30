@@ -4,8 +4,10 @@ class Section < ApplicationRecord
   validates :name, presence: true
 
   belongs_to :user, optional: true
-  has_and_belongs_to_many :questions
-  has_and_belongs_to_many :forms
+  has_many :section_questions, -> { order(:position) }, dependent: :destroy
+  has_many :questions, through: :section_questions
+  has_many :form_sections, dependent: :destroy
+  has_many :forms, through: :form_sections
 
   scope :not_deleted, -> { where(deleted: false) }
 

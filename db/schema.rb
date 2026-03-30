@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_10_152825) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_29_000006) do
   create_table "alert_status_caches", force: :cascade do |t|
     t.integer "alert_id", null: false
     t.boolean "is_activated", default: false
@@ -71,6 +71,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_152825) do
     t.index ["user_id"], name: "index_form_drafts_on_user_id"
   end
 
+  create_table "form_sections", force: :cascade do |t|
+    t.integer "form_id", null: false
+    t.integer "section_id", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["form_id", "position"], name: "index_form_sections_on_form_id_and_position"
+    t.index ["form_id", "section_id"], name: "index_form_sections_on_form_id_and_section_id", unique: true
+    t.index ["form_id"], name: "index_form_sections_on_form_id"
+    t.index ["section_id"], name: "index_form_sections_on_section_id"
+  end
+
   create_table "forms", force: :cascade do |t|
     t.string "name"
     t.integer "user_id"
@@ -81,18 +93,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_152825) do
     t.index ["namespace"], name: "index_forms_on_namespace"
   end
 
-  create_table "forms_sections", id: false, force: :cascade do |t|
-    t.integer "form_id", null: false
-    t.integer "section_id", null: false
-  end
-
   create_table "metric_metrics", force: :cascade do |t|
     t.integer "parent_metric_id", null: false
     t.integer "child_metric_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "position", default: 0, null: false
     t.index ["child_metric_id"], name: "index_metric_metrics_on_child_metric_id"
     t.index ["parent_metric_id", "child_metric_id"], name: "index_metric_metrics_on_parent_and_child", unique: true
+    t.index ["parent_metric_id", "position"], name: "index_metric_metrics_on_parent_metric_id_and_position"
     t.index ["parent_metric_id"], name: "index_metric_metrics_on_parent_metric_id"
   end
 
@@ -101,6 +110,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_152825) do
     t.integer "question_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "position", default: 0, null: false
+    t.index ["metric_id", "position"], name: "index_metric_questions_on_metric_id_and_position"
     t.index ["metric_id", "question_id"], name: "index_metric_questions_on_metric_id_and_question_id", unique: true
     t.index ["metric_id"], name: "index_metric_questions_on_metric_id"
     t.index ["question_id"], name: "index_metric_questions_on_question_id"
@@ -149,11 +160,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_152825) do
     t.index ["user_id"], name: "index_questions_on_user_id"
   end
 
-  create_table "questions_sections", id: false, force: :cascade do |t|
-    t.integer "question_id", null: false
-    t.integer "section_id", null: false
-  end
-
   create_table "remembers", force: :cascade do |t|
     t.string "description", null: false
     t.text "background"
@@ -175,7 +181,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_152825) do
     t.integer "alert_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "position", default: 0, null: false
     t.index ["alert_id"], name: "index_report_alerts_on_alert_id"
+    t.index ["report_id", "position"], name: "index_report_alerts_on_report_id_and_position"
     t.index ["report_id"], name: "index_report_alerts_on_report_id"
   end
 
@@ -184,7 +192,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_152825) do
     t.integer "metric_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "position", default: 0, null: false
     t.index ["metric_id"], name: "index_report_metrics_on_metric_id"
+    t.index ["report_id", "position"], name: "index_report_metrics_on_report_id_and_position"
     t.index ["report_id"], name: "index_report_metrics_on_report_id"
   end
 
@@ -212,6 +222,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_152825) do
     t.string "namespace", default: "", null: false
     t.index ["namespace"], name: "index_responses_on_namespace"
     t.index ["user_id"], name: "index_responses_on_user_id"
+  end
+
+  create_table "section_questions", force: :cascade do |t|
+    t.integer "section_id", null: false
+    t.integer "question_id", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["question_id"], name: "index_section_questions_on_question_id"
+    t.index ["section_id", "position"], name: "index_section_questions_on_section_id_and_position"
+    t.index ["section_id", "question_id"], name: "index_section_questions_on_section_id_and_question_id", unique: true
+    t.index ["section_id"], name: "index_section_questions_on_section_id"
   end
 
   create_table "sections", force: :cascade do |t|
@@ -258,6 +280,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_152825) do
   add_foreign_key "answers", "users"
   add_foreign_key "form_drafts", "forms"
   add_foreign_key "form_drafts", "users"
+  add_foreign_key "form_sections", "forms"
+  add_foreign_key "form_sections", "sections"
   add_foreign_key "metric_metrics", "metrics", column: "child_metric_id"
   add_foreign_key "metric_metrics", "metrics", column: "parent_metric_id"
   add_foreign_key "metric_questions", "metrics"
@@ -273,6 +297,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_152825) do
   add_foreign_key "report_metrics", "reports"
   add_foreign_key "reports", "users"
   add_foreign_key "responses", "users"
+  add_foreign_key "section_questions", "questions"
+  add_foreign_key "section_questions", "sections"
   add_foreign_key "sections", "users"
   add_foreign_key "user_settings", "users"
 end

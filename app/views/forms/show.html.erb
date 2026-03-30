@@ -15,18 +15,31 @@
     <h2>Sections</h2>
 
     <% if @form.sections.any? %>
-      <div class="index-grid">
-        <% @form.sections.each do |section| %>
-          <div class="index-card">
+      <%= render "shared/association_sort_controls", sort_action: :sort_sections %>
+
+      <% sections = @form.sections.to_a %>
+      <% sections.each_with_index do |section, idx| %>
+        <div class="ordered-list-item">
+          <div class="ordered-list-item-content">
             <h3><%= link_to section.name, section_path(section) %></h3>
             <p><%= pluralize(section.questions.count, 'question') %></p>
-            <div class="index-card-actions">
-              <%= link_to "View", section_path(section) %>
-              <%= link_to "Edit", edit_section_path(section) %>
-            </div>
           </div>
-        <% end %>
-      </div>
+          <div class="ordered-list-item-actions">
+            <div class="move-controls">
+              <% if idx > 0 %>
+                <%= link_to "↑", move_section_up_form_path(@form, section_id: section.id),
+                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move up" %>
+              <% end %>
+              <% if idx < sections.length - 1 %>
+                <%= link_to "↓", move_section_down_form_path(@form, section_id: section.id),
+                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move down" %>
+              <% end %>
+            </div>
+            <%= link_to "View", section_path(section) %>
+            <%= link_to "Edit", edit_section_path(section) %>
+          </div>
+        </div>
+      <% end %>
     <% else %>
       <p>No sections yet. Create your first section below.</p>
     <% end %>

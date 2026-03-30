@@ -11,13 +11,13 @@ class Metric < ApplicationRecord
   has_many :report_metrics, dependent: :destroy
   has_many :reports, through: :report_metrics
 
-  has_many :metric_questions, dependent: :destroy
+  has_many :metric_questions, -> { order(:position) }, dependent: :destroy
   has_many :questions, through: :metric_questions
 
   has_many :parent_metric_metrics, class_name: "MetricMetric", foreign_key: "child_metric_id", dependent: :destroy
   has_many :parent_metrics, through: :parent_metric_metrics, source: :parent_metric
 
-  has_many :child_metric_metrics, class_name: "MetricMetric", foreign_key: "parent_metric_id", dependent: :destroy
+  has_many :child_metric_metrics, -> { order(:position) }, class_name: "MetricMetric", foreign_key: "parent_metric_id", dependent: :destroy
 
   belongs_to :first_metric, class_name: "Metric", optional: true
 
@@ -29,6 +29,7 @@ class Metric < ApplicationRecord
   validates :fill, inclusion: { in: %w[none zero linear previous] }, allow_nil: true
 
   attr_accessor :child_metric_ids_temp, :child_metric_ids_changed
+  attr_accessor :question_ids_temp, :question_ids_changed
 
   # Convert empty string to nil for wrap field
   def wrap=(value)
@@ -96,6 +97,19 @@ class Metric < ApplicationRecord
 
     # 3. Apply the function across sources for each bucket
     apply_function_across_sources(rebucketed_sources)
+  end
+
+  def question_ids=(ids)
+    @question_ids_temp = Array(ids).reject(&:blank?)
+    @question_ids_changed = true
+  end
+
+  def question_ids
+    if persisted? && !@question_ids_changed
+      metric_questions.pluck(:question_id)
+    else
+      @question_ids_temp || []
+    end
   end
 
   def child_metric_ids=(ids)
@@ -798,10 +812,19 @@ class Metric < ApplicationRecord
   end
 
   def store_child_metric_ids
-    # child_metric_ids_temp is already set by the setter
+    # child_metric_ids_temp and question_ids_temp are already set by the setters
   end
 
   def create_child_associations
+    if @question_ids_changed
+      metric_questions.destroy_all
+      if @question_ids_temp.present?
+        @question_ids_temp.each_with_index do |q_id, idx|
+          metric_questions.create!(question_id: q_id, position: idx)
+        end
+      end
+    end
+
     return unless @child_metric_ids_changed
 
     # Clear existing associations
@@ -809,8 +832,8 @@ class Metric < ApplicationRecord
 
     # Create new associations if any
     if @child_metric_ids_temp.present?
-      @child_metric_ids_temp.each do |child_id|
-        child_metric_metrics.create!(child_metric_id: child_id)
+      @child_metric_ids_temp.each_with_index do |child_id, idx|
+        child_metric_metrics.create!(child_metric_id: child_id, position: idx)
       end
     end
   end

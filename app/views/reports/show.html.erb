@@ -14,6 +14,61 @@
     </p>
   </div>
 
+  <!-- Reorder Controls -->
+  <% if @report.alerts.count > 1 %>
+    <div class="card" style="margin-bottom: 1rem;">
+      <h3 style="margin: 0 0 0.75rem 0; font-size: 1rem;">Reorder Alerts</h3>
+      <%= render "shared/association_sort_controls", sort_action: :sort_alerts %>
+      <% alerts_list = @report.report_alerts.includes(:alert).to_a %>
+      <% alerts_list.each_with_index do |ra, idx| %>
+        <div class="ordered-list-item">
+          <div class="ordered-list-item-content">
+            <span><%= ra.alert.display_name %></span>
+          </div>
+          <div class="ordered-list-item-actions">
+            <div class="move-controls">
+              <% if idx > 0 %>
+                <%= link_to "↑", move_alert_up_report_path(@report, alert_id: ra.alert_id),
+                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move up" %>
+              <% end %>
+              <% if idx < alerts_list.length - 1 %>
+                <%= link_to "↓", move_alert_down_report_path(@report, alert_id: ra.alert_id),
+                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move down" %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @report.metrics.count > 1 %>
+    <div class="card" style="margin-bottom: 1rem;">
+      <h3 style="margin: 0 0 0.75rem 0; font-size: 1rem;">Reorder Metrics</h3>
+      <%= render "shared/association_sort_controls", sort_action: :sort_metrics %>
+      <% metrics_list = @report.report_metrics.includes(:metric).to_a %>
+      <% metrics_list.each_with_index do |rm, idx| %>
+        <div class="ordered-list-item">
+          <div class="ordered-list-item-content">
+            <span><%= rm.metric.display_name %></span>
+          </div>
+          <div class="ordered-list-item-actions">
+            <div class="move-controls">
+              <% if idx > 0 %>
+                <%= link_to "↑", move_metric_up_report_path(@report, metric_id: rm.metric_id),
+                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move up" %>
+              <% end %>
+              <% if idx < metrics_list.length - 1 %>
+                <%= link_to "↓", move_metric_down_report_path(@report, metric_id: rm.metric_id),
+                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move down" %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
   <%= render 'shared/report_content' %>
 
   <!-- Send Report Button -->

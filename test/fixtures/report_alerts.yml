@@ -3,7 +3,9 @@
 one:
   report: one
   alert: one
+  position: 0
 
 two:
   report: two
   alert: two
+  position: 0

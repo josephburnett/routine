@@ -2,11 +2,11 @@ class FormsController < ApplicationController
   include NamespaceBrowsing
 
   before_action :require_login
-  before_action :find_form, only: [ :show, :edit, :update, :soft_delete, :survey, :submit_survey, :update_draft, :remove_section ]
+  before_action :find_form, only: [ :show, :edit, :update, :soft_delete, :survey, :submit_survey, :update_draft, :remove_section, :move_section_up, :move_section_down, :sort_sections ]
 
   def index
     setup_namespace_browsing(Form, :forms_path)
-    @items = Form.items_in_namespace(current_user, @current_namespace).not_deleted
+    @items = apply_index_sort(Form.items_in_namespace(current_user, @current_namespace).not_deleted)
   end
 
   def show
@@ -104,23 +104,41 @@ class FormsController < ApplicationController
     @form = current_user.forms.find(params[:id])
     @section = current_user.sections.find(params[:section_id])
 
-    unless @form.sections.include?(@section)
-      @form.sections << @section
-      redirect_to @form, notice: "Section added to form successfully"
-    else
+    if FormSection.exists?(form: @form, section: @section)
       redirect_to @form, alert: "Section is already in this form"
+    else
+      FormSection.create!(form: @form, section: @section, position: FormSection.next_position_for(form_id: @form.id))
+      redirect_to @form, notice: "Section added to form successfully"
     end
   end
 
   def remove_section
     @section = current_user.sections.find(params[:section_id])
 
-    if @form.sections.include?(@section)
-      @form.sections.delete(@section)
+    join = FormSection.find_by(form: @form, section: @section)
+    if join
+      join.destroy
       redirect_to edit_form_path(@form), notice: "Section removed from form successfully"
     else
       redirect_to edit_form_path(@form), alert: "Section is not in this form"
     end
+  end
+
+  def move_section_up
+    join = FormSection.find_by!(form: @form, section_id: params[:section_id])
+    join.move_higher!
+    redirect_to @form
+  end
+
+  def move_section_down
+    join = FormSection.find_by!(form: @form, section_id: params[:section_id])
+    join.move_lower!
+    redirect_to @form
+  end
+
+  def sort_sections
+    FormSection.apply_sort!({ form_id: @form.id }, :section, params[:sort_by], params[:direction])
+    redirect_to @form
   end
 
   private

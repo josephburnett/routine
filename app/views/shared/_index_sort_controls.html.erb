@@ -1,0 +1,14 @@
+<div class="sort-controls">
+  <span>Sort:</span>
+  <% name_col = local_assigns[:name_column] || "name" %>
+  <%= link_to "A-Z", url_for(request.query_parameters.merge(sort: name_col, dir: "asc")),
+      class: ("active" if @current_sort == name_col && @current_dir == "asc") %>
+  <%= link_to "Z-A", url_for(request.query_parameters.merge(sort: name_col, dir: "desc")),
+      class: ("active" if @current_sort == name_col && @current_dir == "desc") %>
+  <%= link_to "Oldest", url_for(request.query_parameters.merge(sort: "created_at", dir: "asc")),
+      class: ("active" if @current_sort == "created_at" && @current_dir == "asc") %>
+  <%= link_to "Newest", url_for(request.query_parameters.merge(sort: "created_at", dir: "desc")),
+      class: ("active" if @current_sort == "created_at" && @current_dir == "desc") %>
+  <%= link_to "Updated", url_for(request.query_parameters.merge(sort: "updated_at", dir: "desc")),
+      class: ("active" if @current_sort == "updated_at") %>
+</div>

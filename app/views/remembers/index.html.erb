@@ -43,6 +43,7 @@
     <% end %>
 
     <!-- Remembers List -->
+    <%= render "shared/index_sort_controls", name_column: "description" %>
     <% if @items.any? %>
       <div class="items-section">
         <h3><%= @current_namespace.present? ? "Remembers in #{@current_namespace}" : "Remembers in Root" %></h3>

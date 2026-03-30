@@ -16,9 +16,8 @@ class ResponsesController < ApplicationController
       @breadcrumbs = []
     else
       setup_namespace_browsing(Response, :responses_path)
-      @items = Response.items_in_namespace(current_user, @current_namespace)
-                      .not_deleted
-                      .order(created_at: :desc)
+      @items = apply_index_sort(Response.items_in_namespace(current_user, @current_namespace)
+                      .not_deleted, default_sort: "created_at", default_dir: "desc")
                       .page(params[:page])
                       .per(25)
     end

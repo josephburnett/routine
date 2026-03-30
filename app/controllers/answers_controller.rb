@@ -5,9 +5,8 @@ class AnswersController < ApplicationController
 
   def index
     setup_namespace_browsing(Answer, :answers_path)
-    @items = Answer.items_in_namespace(current_user, @current_namespace)
-                   .not_deleted
-                   .order(created_at: :desc)
+    @items = apply_index_sort(Answer.items_in_namespace(current_user, @current_namespace)
+                   .not_deleted, default_sort: "created_at", default_dir: "desc")
                    .page(params[:page])
                    .per(25)
   end

@@ -21,18 +21,31 @@
     <h2>Questions</h2>
 
     <% if @section.questions.any? %>
-      <div class="index-grid">
-        <% @section.questions.each do |question| %>
-          <div class="index-card">
+      <%= render "shared/association_sort_controls", sort_action: :sort_questions %>
+
+      <% questions = @section.questions.to_a %>
+      <% questions.each_with_index do |question, idx| %>
+        <div class="ordered-list-item">
+          <div class="ordered-list-item-content">
             <h3><%= link_to question.name, question_path(question) %></h3>
             <p>Type: <%= question.question_type || "Not set" %></p>
-            <div class="index-card-actions">
-              <%= link_to "View", question_path(question) %>
-              <%= link_to "Edit", edit_question_path(question) %>
-            </div>
           </div>
-        <% end %>
-      </div>
+          <div class="ordered-list-item-actions">
+            <div class="move-controls">
+              <% if idx > 0 %>
+                <%= link_to "↑", move_question_up_section_path(@section, question_id: question.id),
+                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move up" %>
+              <% end %>
+              <% if idx < questions.length - 1 %>
+                <%= link_to "↓", move_question_down_section_path(@section, question_id: question.id),
+                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move down" %>
+              <% end %>
+            </div>
+            <%= link_to "View", question_path(question) %>
+            <%= link_to "Edit", edit_question_path(question) %>
+          </div>
+        </div>
+      <% end %>
     <% else %>
       <p>No questions yet. Create your first question below.</p>
     <% end %>

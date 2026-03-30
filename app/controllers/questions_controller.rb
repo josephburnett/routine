@@ -5,7 +5,7 @@ class QuestionsController < ApplicationController
 
   def index
     setup_namespace_browsing(Question, :questions_path)
-    @items = Question.items_in_namespace(current_user, @current_namespace).not_deleted
+    @items = apply_index_sort(Question.items_in_namespace(current_user, @current_namespace).not_deleted)
   end
 
   def show
@@ -71,7 +71,7 @@ class QuestionsController < ApplicationController
       @question.namespace = @section.namespace
 
       if @question.save
-        @section.questions << @question
+        SectionQuestion.create!(section: @section, question: @question, position: SectionQuestion.next_position_for(section_id: @section.id))
         redirect_to @section, notice: "Question created successfully"
       else
         redirect_to @section, alert: "Error creating question"

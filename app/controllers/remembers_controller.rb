@@ -7,9 +7,11 @@ class RemembersController < ApplicationController
   def index
     setup_namespace_browsing(Remember, :remembers_path)
     # Show ALL remembers in current namespace (including retired) in decay order
-    @items = Remember.items_in_namespace(current_user, @current_namespace)
-                     .not_deleted
-                     .sorted_by_decay
+    @items = if params[:sort].present?
+               apply_index_sort(Remember.items_in_namespace(current_user, @current_namespace).not_deleted)
+    else
+               Remember.items_in_namespace(current_user, @current_namespace).not_deleted.sorted_by_decay
+    end
   end
 
   # Streamlined view showing only visible_today remembers

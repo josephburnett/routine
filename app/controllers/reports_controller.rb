@@ -3,11 +3,11 @@ class ReportsController < ApplicationController
   require "timeout"
 
   before_action :require_login
-  before_action :find_report, only: [ :edit, :update, :soft_delete, :send_now ]
+  before_action :find_report, only: [ :edit, :update, :soft_delete, :send_now, :move_alert_up, :move_alert_down, :sort_alerts, :move_metric_up, :move_metric_down, :sort_metrics ]
 
   def index
     setup_namespace_browsing(Report, :reports_path)
-    @items = Report.items_in_namespace(current_user, @current_namespace).not_deleted.includes(:alerts, :metrics)
+    @items = apply_index_sort(Report.items_in_namespace(current_user, @current_namespace).not_deleted.includes(:alerts, :metrics))
   end
 
   def show
@@ -82,15 +82,15 @@ class ReportsController < ApplicationController
     if @report.save
       # Handle alert associations
       if params[:alert_ids].present?
-        params[:alert_ids].each do |alert_id|
-          @report.report_alerts.create(alert_id: alert_id) if alert_id.present?
+        params[:alert_ids].each_with_index do |alert_id, idx|
+          @report.report_alerts.create(alert_id: alert_id, position: idx) if alert_id.present?
         end
       end
 
       # Handle metric associations
       if params[:metric_ids].present?
-        params[:metric_ids].each do |metric_id|
-          @report.report_metrics.create(metric_id: metric_id) if metric_id.present?
+        params[:metric_ids].each_with_index do |metric_id, idx|
+          @report.report_metrics.create(metric_id: metric_id, position: idx) if metric_id.present?
         end
       end
 
@@ -133,16 +133,16 @@ class ReportsController < ApplicationController
       # Update alert associations
       @report.report_alerts.destroy_all
       if params[:alert_ids].present?
-        params[:alert_ids].each do |alert_id|
-          @report.report_alerts.create(alert_id: alert_id) if alert_id.present?
+        params[:alert_ids].each_with_index do |alert_id, idx|
+          @report.report_alerts.create(alert_id: alert_id, position: idx) if alert_id.present?
         end
       end
 
       # Update metric associations
       @report.report_metrics.destroy_all
       if params[:metric_ids].present?
-        params[:metric_ids].each do |metric_id|
-          @report.report_metrics.create(metric_id: metric_id) if metric_id.present?
+        params[:metric_ids].each_with_index do |metric_id, idx|
+          @report.report_metrics.create(metric_id: metric_id, position: idx) if metric_id.present?
         end
       end
 
@@ -171,6 +171,40 @@ class ReportsController < ApplicationController
       Rails.logger.error "Failed to send report #{@report.name} (ID: #{@report.id}): #{e.message}"
       redirect_to @report, alert: "Failed to send report: #{e.message}"
     end
+  end
+
+  def move_alert_up
+    join = @report.report_alerts.find_by!(alert_id: params[:alert_id])
+    join.move_higher!
+    redirect_to @report
+  end
+
+  def move_alert_down
+    join = @report.report_alerts.find_by!(alert_id: params[:alert_id])
+    join.move_lower!
+    redirect_to @report
+  end
+
+  def sort_alerts
+    ReportAlert.apply_sort!({ report_id: @report.id }, :alert, params[:sort_by], params[:direction])
+    redirect_to @report
+  end
+
+  def move_metric_up
+    join = @report.report_metrics.find_by!(metric_id: params[:metric_id])
+    join.move_higher!
+    redirect_to @report
+  end
+
+  def move_metric_down
+    join = @report.report_metrics.find_by!(metric_id: params[:metric_id])
+    join.move_lower!
+    redirect_to @report
+  end
+
+  def sort_metrics
+    ReportMetric.apply_sort!({ report_id: @report.id }, :metric, params[:sort_by], params[:direction])
+    redirect_to @report
   end
 
   def soft_delete

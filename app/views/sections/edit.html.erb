@@ -39,22 +39,33 @@
   <% if @section.questions.any? %>
     <div class="card">
       <h3>Questions in this Section</h3>
-      <ul style="list-style: none; padding: 0;">
-        <% @section.questions.each do |question| %>
-          <li style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
-            <span>
-              <%= link_to question.name, question_path(question) %>
-              <span style="color: var(--text-secondary); font-size: 0.875rem; margin-left: 0.5rem;">
-                (<%= question.question_type %>)
-              </span>
+      <% questions = @section.questions.to_a %>
+      <% questions.each_with_index do |question, idx| %>
+        <div class="ordered-list-item">
+          <div class="ordered-list-item-content">
+            <span><%= link_to question.name, question_path(question) %></span>
+            <span style="color: var(--gray-500); font-size: 0.875rem; margin-left: 0.5rem;">
+              (<%= question.question_type %>)
             </span>
+          </div>
+          <div class="ordered-list-item-actions">
+            <div class="move-controls">
+              <% if idx > 0 %>
+                <%= link_to "↑", move_question_up_section_path(@section, question_id: question.id),
+                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move up" %>
+              <% end %>
+              <% if idx < questions.length - 1 %>
+                <%= link_to "↓", move_question_down_section_path(@section, question_id: question.id),
+                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move down" %>
+              <% end %>
+            </div>
             <%= link_to "✕", remove_question_section_path(@section, question_id: question.id),
                 data: { "turbo-method": :patch, confirm: "Remove this question from the section?" },
-                style: "color: var(--error); font-size: 1.5rem; font-weight: bold; text-decoration: none; padding: 0 0.5rem;",
+                style: "color: var(--error); font-size: 1.25rem; font-weight: bold; text-decoration: none;",
                 title: "Remove question" %>
-          </li>
-        <% end %>
-      </ul>
+          </div>
+        </div>
+      <% end %>
     </div>
   <% end %>
 

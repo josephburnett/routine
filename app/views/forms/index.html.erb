@@ -39,6 +39,7 @@
   <% end %>
 
   <!-- Items in Current Namespace -->
+  <%= render "shared/index_sort_controls" %>
   <% if @items.any? %>
     <div class="items-section">
       <h3><%= @current_namespace.present? ? "Forms in #{@current_namespace}" : "Forms in Root" %></h3>

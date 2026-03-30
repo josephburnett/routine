@@ -3,7 +3,9 @@
 one:
   report: one
   metric: one
+  position: 0
 
 two:
   report: two
   metric: two
+  position: 0

@@ -7,7 +7,8 @@ class Question < ApplicationRecord
   validate :range_min_less_than_max, if: -> { question_type == "range" }
 
   belongs_to :user, optional: true
-  has_and_belongs_to_many :sections
+  has_many :section_questions, dependent: :destroy
+  has_many :sections, through: :section_questions
   has_many :answers
 
   # Reverse association to see which metrics reference this question

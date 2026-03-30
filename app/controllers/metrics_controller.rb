@@ -6,7 +6,7 @@ class MetricsController < ApplicationController
 
   def index
     setup_namespace_browsing(Metric, :metrics_path)
-    @items = Metric.items_in_namespace(current_user, @current_namespace).not_deleted
+    @items = apply_index_sort(Metric.items_in_namespace(current_user, @current_namespace).not_deleted)
   end
 
   def show

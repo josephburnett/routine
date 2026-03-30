@@ -40,6 +40,7 @@
     <% end %>
 
     <!-- Items in Current Namespace -->
+    <%= render "shared/index_sort_controls" %>
     <% if @items.any? %>
       <div class="items-section">
         <h3><%= @current_namespace.present? ? "Metrics in #{@current_namespace}" : "Metrics in Root" %></h3>

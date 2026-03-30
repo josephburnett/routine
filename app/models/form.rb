@@ -4,7 +4,8 @@ class Form < ApplicationRecord
   validates :name, presence: true
 
   belongs_to :user, optional: true
-  has_and_belongs_to_many :sections
+  has_many :form_sections, -> { order(:position) }, dependent: :destroy
+  has_many :sections, through: :form_sections
   has_many :responses
   has_many :form_drafts, dependent: :destroy
 

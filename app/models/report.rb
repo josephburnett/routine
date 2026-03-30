@@ -7,10 +7,10 @@ class Report < ApplicationRecord
   attribute :interval_config, :json
 
   # Many-to-many relationships
-  has_many :report_alerts, dependent: :destroy
+  has_many :report_alerts, -> { order(:position) }, dependent: :destroy
   has_many :alerts, through: :report_alerts
 
-  has_many :report_metrics, dependent: :destroy
+  has_many :report_metrics, -> { order(:position) }, dependent: :destroy
   has_many :metrics, through: :report_metrics
 
   validates :name, presence: true

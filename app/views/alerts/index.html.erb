@@ -39,6 +39,7 @@
       </div>
     <% end %>
 
+    <%= render "shared/index_sort_controls" %>
     <% if @items.any? %>
       <div class="index-grid">
         <% @items.each do |alert| %>

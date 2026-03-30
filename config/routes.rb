@@ -3,6 +3,12 @@ Rails.application.routes.draw do
     member do
       patch :soft_delete
       post :send_now
+      patch :move_alert_up
+      patch :move_alert_down
+      patch :sort_alerts
+      patch :move_metric_up
+      patch :move_metric_down
+      patch :sort_metrics
     end
   end
 
@@ -22,6 +28,9 @@ Rails.application.routes.draw do
       patch :add_section
       patch :remove_section
       patch :update_draft
+      patch :move_section_up
+      patch :move_section_down
+      patch :sort_sections
     end
   end
 
@@ -31,6 +40,9 @@ Rails.application.routes.draw do
       patch :soft_delete
       patch :add_question
       patch :remove_question
+      patch :move_question_up
+      patch :move_question_down
+      patch :sort_questions
     end
   end
 

@@ -34,22 +34,33 @@
   <% if @form.sections.any? %>
     <div class="card">
       <h3>Sections in this Form</h3>
-      <ul style="list-style: none; padding: 0;">
-        <% @form.sections.each do |section| %>
-          <li style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
-            <span>
-              <%= link_to section.name, section_path(section) %>
-              <span style="color: var(--text-secondary); font-size: 0.875rem; margin-left: 0.5rem;">
-                (<%= pluralize(section.questions.count, 'question') %>)
-              </span>
+      <% sections = @form.sections.to_a %>
+      <% sections.each_with_index do |section, idx| %>
+        <div class="ordered-list-item">
+          <div class="ordered-list-item-content">
+            <span><%= link_to section.name, section_path(section) %></span>
+            <span style="color: var(--gray-500); font-size: 0.875rem; margin-left: 0.5rem;">
+              (<%= pluralize(section.questions.count, 'question') %>)
             </span>
+          </div>
+          <div class="ordered-list-item-actions">
+            <div class="move-controls">
+              <% if idx > 0 %>
+                <%= link_to "↑", move_section_up_form_path(@form, section_id: section.id),
+                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move up" %>
+              <% end %>
+              <% if idx < sections.length - 1 %>
+                <%= link_to "↓", move_section_down_form_path(@form, section_id: section.id),
+                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move down" %>
+              <% end %>
+            </div>
             <%= link_to "✕", remove_section_form_path(@form, section_id: section.id),
                 data: { "turbo-method": :patch, confirm: "Remove this section from the form?" },
-                style: "color: var(--error); font-size: 1.5rem; font-weight: bold; text-decoration: none; padding: 0 0.5rem;",
+                style: "color: var(--error); font-size: 1.25rem; font-weight: bold; text-decoration: none;",
                 title: "Remove section" %>
-          </li>
-        <% end %>
-      </ul>
+          </div>
+        </div>
+      <% end %>
     </div>
   <% end %>
 

@@ -6,7 +6,7 @@ class AlertsController < ApplicationController
 
   def index
     setup_namespace_browsing(Alert, :alerts_path)
-    @items = Alert.items_in_namespace(current_user, @current_namespace).not_deleted.includes(:metric)
+    @items = apply_index_sort(Alert.items_in_namespace(current_user, @current_namespace).not_deleted.includes(:metric))
   end
 
   def show

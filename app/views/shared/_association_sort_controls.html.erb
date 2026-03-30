@@ -1,0 +1,11 @@
+<div class="sort-controls">
+  <span>Sort:</span>
+  <%= link_to "A-Z", url_for(action: sort_action, sort_by: "name", direction: "asc"),
+      data: { "turbo-method": :patch }, class: "sort-link" %>
+  <%= link_to "Z-A", url_for(action: sort_action, sort_by: "name", direction: "desc"),
+      data: { "turbo-method": :patch }, class: "sort-link" %>
+  <%= link_to "Oldest", url_for(action: sort_action, sort_by: "created_at", direction: "asc"),
+      data: { "turbo-method": :patch }, class: "sort-link" %>
+  <%= link_to "Newest", url_for(action: sort_action, sort_by: "created_at", direction: "desc"),
+      data: { "turbo-method": :patch }, class: "sort-link" %>
+</div>
