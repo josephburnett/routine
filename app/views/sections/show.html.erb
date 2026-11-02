@@ -33,12 +33,12 @@
           <div class="ordered-list-item-actions">
             <div class="move-controls">
               <% if idx > 0 %>
-                <%= link_to "↑", move_question_up_section_path(@section, question_id: question.id),
-                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move up" %>
+                <%= action_button "↑", move_question_up_section_path(@section, question_id: question.id),
+                    class: "btn-move", title: "Move up" %>
               <% end %>
               <% if idx < questions.length - 1 %>
-                <%= link_to "↓", move_question_down_section_path(@section, question_id: question.id),
-                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move down" %>
+                <%= action_button "↓", move_question_down_section_path(@section, question_id: question.id),
+                    class: "btn-move", title: "Move down" %>
               <% end %>
             </div>
             <%= link_to "View", question_path(question) %>

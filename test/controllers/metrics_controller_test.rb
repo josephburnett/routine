@@ -14,4 +14,11 @@ class MetricsControllerTest < ActionDispatch::IntegrationTest
     # Skip this test for now due to complex series data requirements
     skip "Series data generation requires complex setup"
   end
+
+  test "should soft delete metric" do
+    metric = metrics(:one)
+    patch soft_delete_metric_path(metric)
+    assert_redirected_to metrics_path
+    assert metric.reload.deleted
+  end
 end

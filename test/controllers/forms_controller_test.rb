@@ -105,4 +105,11 @@ class FormsControllerTest < ActionDispatch::IntegrationTest
     second_pos = body.index("Second Section")
     assert first_pos < second_pos, "First Section should appear before Second Section in survey"
   end
+
+  test "should soft delete form" do
+    form = forms(:one)
+    patch soft_delete_form_path(form)
+    assert_redirected_to forms_path
+    assert form.reload.deleted
+  end
 end

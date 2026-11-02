@@ -13,4 +13,11 @@ class ResponsesControllerTest < ActionDispatch::IntegrationTest
     get response_path(responses(:one))
     assert_response :success
   end
+
+  test "should soft delete response" do
+    response = responses(:one)
+    patch soft_delete_response_path(response)
+    assert_redirected_to responses_path
+    assert response.reload.deleted
+  end
 end

@@ -13,20 +13,16 @@
   <!-- Action buttons at top -->
   <div class="card">
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-      <%= link_to "📌 Pin", pin_remember_path(@remember),
-          data: { "turbo-method": :patch },
+      <%= action_button "📌 Pin", pin_remember_path(@remember),
           class: "btn btn-secondary" %>
-      <%= link_to "🔄 Float", float_remember_path(@remember),
-          data: { "turbo-method": :patch },
+      <%= action_button "🔄 Float", float_remember_path(@remember),
           class: "btn btn-secondary" %>
-      <%= link_to "⬆ Bump Up", bump_up_remember_path(@remember),
-          data: { "turbo-method": :patch },
+      <%= action_button "⬆ Bump Up", bump_up_remember_path(@remember),
           class: "btn btn-secondary" %>
-      <%= link_to "⬇ Bump Down", bump_down_remember_path(@remember),
-          data: { "turbo-method": :patch },
+      <%= action_button "⬇ Bump Down", bump_down_remember_path(@remember),
           class: "btn btn-secondary" %>
-      <%= link_to "🗄 Retire", retire_remember_path(@remember),
-          data: { "turbo-method": :patch, confirm: "Retire this remember?" },
+      <%= action_button "🗄 Retire", retire_remember_path(@remember),
+          confirm: "Retire this remember?",
           class: "btn btn-secondary" %>
       <span style="margin-left: auto; color: var(--text-secondary);">
         <% case @remember.state %>

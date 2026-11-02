@@ -2,7 +2,7 @@
 
 one:
   question: one
-  answer_type: MyString
+  answer_type: number
   string_value: MyString
   number_value: 1.5
   bool_value: false
@@ -12,7 +12,7 @@ one:
 
 two:
   question: two
-  answer_type: MyString
+  answer_type: number
   string_value: MyString
   number_value: 1.5
   bool_value: false

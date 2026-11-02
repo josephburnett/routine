@@ -8,4 +8,11 @@ class QuestionsControllerTest < ActionDispatch::IntegrationTest
     post section_questions_path(sections(:one)), params: { question: { name: "Test Question", question_type: "string" } }
     assert_response :redirect
   end
+
+  test "should soft delete question" do
+    question = questions(:one)
+    patch soft_delete_question_path(question)
+    assert_redirected_to questions_path
+    assert question.reload.deleted
+  end
 end

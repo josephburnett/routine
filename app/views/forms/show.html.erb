@@ -27,12 +27,12 @@
           <div class="ordered-list-item-actions">
             <div class="move-controls">
               <% if idx > 0 %>
-                <%= link_to "↑", move_section_up_form_path(@form, section_id: section.id),
-                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move up" %>
+                <%= action_button "↑", move_section_up_form_path(@form, section_id: section.id),
+                    class: "btn-move", title: "Move up" %>
               <% end %>
               <% if idx < sections.length - 1 %>
-                <%= link_to "↓", move_section_down_form_path(@form, section_id: section.id),
-                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move down" %>
+                <%= action_button "↓", move_section_down_form_path(@form, section_id: section.id),
+                    class: "btn-move", title: "Move down" %>
               <% end %>
             </div>
             <%= link_to "View", section_path(section) %>

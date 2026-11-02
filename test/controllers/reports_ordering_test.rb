@@ -71,4 +71,18 @@ class ReportsOrderingTest < ActionDispatch::IntegrationTest
     assert_equal 0, ReportAlert.find_by(report: report, alert: alert).position
     assert_equal 0, ReportMetric.find_by(report: report, metric: metric).position
   end
+
+  test "sort_metrics reorders by name" do
+    @report.report_metrics.destroy_all
+    m_z = Metric.create!(name: "Zebra #{SecureRandom.hex(4)}", user: @user, resolution: "hour", width: "daily", function: "answer")
+    m_a = Metric.create!(name: "Alpha #{SecureRandom.hex(4)}", user: @user, resolution: "hour", width: "daily", function: "answer")
+    ReportMetric.create!(report: @report, metric: m_z, position: 0)
+    ReportMetric.create!(report: @report, metric: m_a, position: 1)
+
+    patch sort_metrics_report_path(@report), params: { sort_by: "name", direction: "asc" }
+    assert_redirected_to report_path(@report)
+
+    assert_equal 0, ReportMetric.find_by(report: @report, metric: m_a).position
+    assert_equal 1, ReportMetric.find_by(report: @report, metric: m_z).position
+  end
 end

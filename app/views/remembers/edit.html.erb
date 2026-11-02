@@ -38,8 +38,8 @@
 
   <div class="card">
     <div style="text-align: center;">
-      <%= link_to "Delete Remember", soft_delete_remember_path(@remember),
-          data: { "turbo-method": :patch, confirm: "Are you sure you want to delete this remember? This action cannot be undone." },
+      <%= action_button "Delete Remember", soft_delete_remember_path(@remember),
+          confirm: "Are you sure you want to delete this remember? This action cannot be undone.",
           class: "btn",
           style: "background-color: var(--error); color: var(--white);" %>
     </div>

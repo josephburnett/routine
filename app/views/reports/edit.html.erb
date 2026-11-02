@@ -108,8 +108,8 @@
     <% end %>
     
     <div style="margin-top: 1rem; text-align: center;">
-      <%= link_to "Delete Report", soft_delete_report_path(@report), 
-          data: { "turbo-method": :patch, confirm: "Are you sure you want to delete this report? This action cannot be undone." }, 
+      <%= action_button "Delete Report", soft_delete_report_path(@report),
+          confirm: "Are you sure you want to delete this report? This action cannot be undone.",
           class: "btn", 
           style: "background-color: var(--error); color: var(--white);" %>
     </div>

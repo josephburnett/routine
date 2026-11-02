@@ -28,12 +28,12 @@
           <div class="ordered-list-item-actions">
             <div class="move-controls">
               <% if idx > 0 %>
-                <%= link_to "↑", move_alert_up_report_path(@report, alert_id: ra.alert_id),
-                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move up" %>
+                <%= action_button "↑", move_alert_up_report_path(@report, alert_id: ra.alert_id),
+                    class: "btn-move", title: "Move up" %>
               <% end %>
               <% if idx < alerts_list.length - 1 %>
-                <%= link_to "↓", move_alert_down_report_path(@report, alert_id: ra.alert_id),
-                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move down" %>
+                <%= action_button "↓", move_alert_down_report_path(@report, alert_id: ra.alert_id),
+                    class: "btn-move", title: "Move down" %>
               <% end %>
             </div>
           </div>
@@ -55,12 +55,12 @@
           <div class="ordered-list-item-actions">
             <div class="move-controls">
               <% if idx > 0 %>
-                <%= link_to "↑", move_metric_up_report_path(@report, metric_id: rm.metric_id),
-                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move up" %>
+                <%= action_button "↑", move_metric_up_report_path(@report, metric_id: rm.metric_id),
+                    class: "btn-move", title: "Move up" %>
               <% end %>
               <% if idx < metrics_list.length - 1 %>
-                <%= link_to "↓", move_metric_down_report_path(@report, metric_id: rm.metric_id),
-                    data: { "turbo-method": :patch }, class: "btn-move", title: "Move down" %>
+                <%= action_button "↓", move_metric_down_report_path(@report, metric_id: rm.metric_id),
+                    class: "btn-move", title: "Move down" %>
               <% end %>
             </div>
           </div>

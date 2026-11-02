@@ -58,23 +58,20 @@
                 <% if remember.state == "pinned" %>📌<% end %>
               </div>
               <div class="remember-actions" style="display: flex; gap: 0.25rem; flex-shrink: 0;">
-                <%= link_to "📌", pin_remember_path(remember),
-                    data: { "turbo-method": :patch },
+                <%= action_button "📌", pin_remember_path(remember),
                     title: "Pin",
                     class: "btn btn-sm",
                     style: "padding: 0.25rem 0.5rem; font-size: 0.875rem; min-width: 2rem;" %>
-                <%= link_to "⬆", bump_up_remember_path(remember),
-                    data: { "turbo-method": :patch },
+                <%= action_button "⬆", bump_up_remember_path(remember),
                     title: "Bump Up (2x decay)",
                     class: "btn btn-sm",
                     style: "padding: 0.25rem 0.5rem; font-size: 0.875rem; min-width: 2rem;" %>
-                <%= link_to "⬇", bump_down_remember_path(remember),
-                    data: { "turbo-method": :patch },
+                <%= action_button "⬇", bump_down_remember_path(remember),
                     title: "Bump Down (0.5x decay)",
                     class: "btn btn-sm",
                     style: "padding: 0.25rem 0.5rem; font-size: 0.875rem; min-width: 2rem;" %>
-                <%= link_to "🗄", retire_remember_path(remember),
-                    data: { "turbo-method": :patch, confirm: "Retire this remember?" },
+                <%= action_button "🗄", retire_remember_path(remember),
+                    confirm: "Retire this remember?",
                     title: "Retire",
                     class: "btn btn-sm",
                     style: "padding: 0.25rem 0.5rem; font-size: 0.875rem; min-width: 2rem;" %>

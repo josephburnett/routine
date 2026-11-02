@@ -202,6 +202,27 @@ input[type="checkbox"] {
 }
 
 /* Buttons */
+
+/* Forms rendered by the action_button helper sit inline, like links */
+.action-button-form {
+  display: inline-flex;
+  margin: 0;
+}
+
+.action-button-form button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.btn-remove {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--error);
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -457,12 +478,18 @@ tr:hover {
   text-decoration: none;
 }
 
-.main-nav a[data-turbo-method] {
+.main-nav .logout-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.375rem;
   background-color: var(--error);
   color: var(--white);
+  font-size: inherit;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
 }
 
-.main-nav a[data-turbo-method]:hover {
+.main-nav .logout-button:hover {
   background-color: #dc2626;
 }
 
@@ -633,8 +660,9 @@ tr:hover {
   font-weight: 500;
 }
 
-.sort-controls a {
+.sort-controls .sort-link {
   padding: 0.25rem 0.5rem;
+  font-size: inherit;
   border: 1px solid var(--gray-300);
   border-radius: 0.25rem;
   text-decoration: none;
@@ -643,12 +671,12 @@ tr:hover {
   transition: all 0.15s;
 }
 
-.sort-controls a:hover {
+.sort-controls .sort-link:hover {
   background: var(--gray-100);
   border-color: var(--gray-500);
 }
 
-.sort-controls a.active {
+.sort-controls .sort-link.active {
   background: var(--primary-blue);
   color: var(--white);
   border-color: var(--primary-blue);

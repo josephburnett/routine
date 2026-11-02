@@ -8,4 +8,11 @@ class SectionsControllerTest < ActionDispatch::IntegrationTest
     get sections_path
     assert_response :success
   end
+
+  test "should soft delete section" do
+    section = sections(:one)
+    patch soft_delete_section_path(section)
+    assert_redirected_to sections_path
+    assert section.reload.deleted
+  end
 end

@@ -1,4 +1,13 @@
 module ApplicationHelper
+  # A button for a non-GET action (PATCH, DELETE, ...), rendered as a real form.
+  # Don't use link_to with data-turbo-method for these: if Turbo's JS doesn't
+  # handle the click, the browser follows the link as a GET and gets a 404.
+  def action_button(label, url, method: :patch, confirm: nil, **button_options)
+    form_data = confirm ? { turbo_confirm: confirm } : {}
+    button_to label, url, method: method, form_class: "action-button-form",
+                          form: { data: form_data }, **button_options
+  end
+
   def all_namespaces_for_user(user)
     namespaces = Set.new
 
