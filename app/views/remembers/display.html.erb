@@ -1,23 +1,66 @@
-<div class="container">
-  <h1>Remembers for Today</h1>
+<div class="container deck-page">
+  <%= link_to "← Back to Remembers", remembers_path(namespace: @current_namespace), class: "back-link" %>
 
-  <%= link_to "<- Back to Remembers", remembers_path(namespace: @current_namespace), class: "back-link" %>
+  <header class="deck-header">
+    <h1>Remembers for Today</h1>
+    <p class="deck-subtitle">
+      <%= @current_namespace.present? ? @current_namespace : "All namespaces" %>
+      · <%= pluralize(@items.size, "card") %>
+    </p>
+  </header>
 
   <% if @items.any? %>
-    <div class="remember-list" style="margin-top: 1.5rem;">
-      <% @items.each do |remember| %>
-        <div class="remember-item" style="padding: 0.75rem; border-bottom: 1px solid var(--border);">
-          <%= link_to remember_path(remember), style: "text-decoration: none; color: inherit;" do %>
-            <%= remember.description %>
-            <% if remember.namespace.present? && remember.namespace != @current_namespace %>
-              <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.5rem;">
-                [<%= remember.namespace %>]
+    <section class="deck" data-controller="remember-deck"
+             data-action="keydown@window->remember-deck#keydown"
+             aria-label="Today's remembers">
+      <div class="deck-progress" data-remember-deck-target="controls" hidden>
+        <div class="deck-progress-bar" data-remember-deck-target="progress"></div>
+      </div>
+
+      <div class="deck-stage"
+           data-action="pointerdown->remember-deck#pointerDown pointerup->remember-deck#pointerUp">
+        <% @items.each_with_index do |remember, idx| %>
+          <article class="deck-card" data-remember-deck-target="card"
+                   aria-label="Remember <%= idx + 1 %> of <%= @items.size %>">
+            <button type="button" class="deck-card-inner" aria-pressed="false"
+                    data-action="remember-deck#flip">
+              <span class="deck-face deck-front">
+                <% show_namespace = remember.namespace.present? && remember.namespace != @current_namespace %>
+                <% if show_namespace || remember.state == "pinned" %>
+                  <span class="deck-meta">
+                    <% if show_namespace %>
+                      <span class="deck-chip"><%= remember.namespace %></span>
+                    <% end %>
+                    <% if remember.state == "pinned" %>
+                      <span class="deck-chip deck-chip-pinned">📌 Pinned</span>
+                    <% end %>
+                  </span>
+                <% end %>
+                <span class="deck-description"><%= remember.description %></span>
+                <span class="deck-hint">Tap to flip</span>
               </span>
-            <% end %>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
+              <span class="deck-face deck-back">
+                <span class="deck-back-title"><%= remember.description %></span>
+                <% if remember.background.present? %>
+                  <span class="deck-background"><%= remember.background %></span>
+                <% else %>
+                  <span class="deck-background deck-background-empty">No background notes.</span>
+                <% end %>
+              </span>
+            </button>
+            <%= link_to "Details", remember_path(remember), class: "deck-details" %>
+          </article>
+        <% end %>
+      </div>
+
+      <div class="deck-controls" data-remember-deck-target="controls" hidden>
+        <button type="button" class="btn btn-secondary deck-nav"
+                data-remember-deck-target="prev" data-action="remember-deck#prev">← Prev</button>
+        <span class="deck-counter" data-remember-deck-target="counter" aria-live="polite"></span>
+        <button type="button" class="btn btn-primary deck-nav"
+                data-remember-deck-target="next" data-action="remember-deck#next">Next →</button>
+      </div>
+    </section>
   <% else %>
     <div class="empty-state" style="margin-top: 1.5rem;">
       <h3>Nothing to remember today</h3>
