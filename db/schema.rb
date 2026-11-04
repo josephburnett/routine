@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_29_000006) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_04_161315) do
   create_table "alert_status_caches", force: :cascade do |t|
     t.integer "alert_id", null: false
     t.boolean "is_activated", default: false
@@ -58,6 +58,18 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_29_000006) do
     t.index ["question_id"], name: "index_answers_on_question_id"
     t.index ["response_id"], name: "index_answers_on_response_id"
     t.index ["user_id"], name: "index_answers_on_user_id"
+  end
+
+  create_table "api_tokens", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.string "name", null: false
+    t.string "token_digest", null: false
+    t.datetime "last_used_at"
+    t.datetime "revoked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["token_digest"], name: "index_api_tokens_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_api_tokens_on_user_id"
   end
 
   create_table "form_drafts", force: :cascade do |t|
@@ -278,6 +290,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_29_000006) do
   add_foreign_key "answers", "questions"
   add_foreign_key "answers", "responses"
   add_foreign_key "answers", "users"
+  add_foreign_key "api_tokens", "users"
   add_foreign_key "form_drafts", "forms"
   add_foreign_key "form_drafts", "users"
   add_foreign_key "form_sections", "forms"

@@ -71,6 +71,24 @@ class Metric < ApplicationRecord
     calculated_series
   end
 
+  # Points shown for this metric: its width plus some margin (everything for all_time).
+  DISPLAY_POINTS = {
+    "daily" => 2, "weekly" => 9, "7_days" => 9, "monthly" => 36, "30_days" => 36,
+    "90_days" => 108, "yearly" => 438
+  }.freeze
+
+  def display_series
+    return series if width == "all_time"
+
+    series.last(DISPLAY_POINTS.fetch(width, 100))
+  end
+
+  # Drops cached series data for this metric and the status of its alerts.
+  def refresh_cache!
+    metric_series_cache&.destroy
+    alerts.each { |alert| alert.alert_status_cache&.destroy }
+  end
+
   def calculate_series_uncached
     # Legacy support - answer and count functions now behave like sum
     if function == "answer" || function == "count"

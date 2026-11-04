@@ -36,26 +36,9 @@ class QuestionsController < ApplicationController
   end
 
   def submit_answer
-    @answer = Answer.new(
-      question: @question,
-      user: current_user,
-      answer_type: @question.question_type,
-      namespace: @question.namespace
-    )
+    @answer = AnswerSubmission.call(question: @question, user: current_user, value: params[:answer_value])
 
-    # Set the appropriate value based on question type
-    case @question.question_type
-    when "string"
-      @answer.string_value = params[:answer_value]
-    when "number"
-      @answer.number_value = params[:answer_value].to_f
-    when "bool"
-      @answer.bool_value = params[:answer_value] == "1"
-    when "range"
-      @answer.number_value = params[:answer_value].to_f
-    end
-
-    if @answer.save
+    if @answer.persisted?
       redirect_to questions_path(namespace: @question.namespace), notice: "Answer submitted successfully"
     else
       render :answer, alert: "Error submitting answer"
@@ -71,7 +54,7 @@ class QuestionsController < ApplicationController
       @question.namespace = @section.namespace
 
       if @question.save
-        SectionQuestion.create!(section: @section, question: @question, position: SectionQuestion.next_position_for(section_id: @section.id))
+        Membership.add(:section_questions, @section, @question)
         redirect_to @section, notice: "Question created successfully"
       else
         redirect_to @section, alert: "Error creating question"

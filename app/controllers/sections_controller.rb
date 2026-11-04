@@ -28,7 +28,7 @@ class SectionsController < ApplicationController
       @section.namespace = @form.namespace
 
       if @section.save
-        FormSection.create!(form: @form, section: @section, position: FormSection.next_position_for(form_id: @form.id))
+        Membership.add(:form_sections, @form, @section)
         redirect_to @form, notice: "Section created successfully"
       else
         redirect_to @form, alert: "Error creating section"
@@ -66,20 +66,17 @@ class SectionsController < ApplicationController
     @section = current_user.sections.find(params[:id])
     @question = current_user.questions.find(params[:question_id])
 
-    if SectionQuestion.exists?(section: @section, question: @question)
-      redirect_to @section, alert: "Question is already in this section"
-    else
-      SectionQuestion.create!(section: @section, question: @question, position: SectionQuestion.next_position_for(section_id: @section.id))
+    if Membership.add(:section_questions, @section, @question)
       redirect_to @section, notice: "Question added to section successfully"
+    else
+      redirect_to @section, alert: "Question is already in this section"
     end
   end
 
   def remove_question
     @question = current_user.questions.find(params[:question_id])
 
-    join = SectionQuestion.find_by(section: @section, question: @question)
-    if join
-      join.destroy
+    if Membership.remove(:section_questions, @section, @question)
       redirect_to edit_section_path(@section), notice: "Question removed from section successfully"
     else
       redirect_to edit_section_path(@section), alert: "Question is not in this section"
@@ -87,19 +84,17 @@ class SectionsController < ApplicationController
   end
 
   def move_question_up
-    join = SectionQuestion.find_by!(section: @section, question_id: params[:question_id])
-    join.move_higher!
+    move_or_404(:section_questions, @section, params[:question_id], :up)
     redirect_to @section
   end
 
   def move_question_down
-    join = SectionQuestion.find_by!(section: @section, question_id: params[:question_id])
-    join.move_lower!
+    move_or_404(:section_questions, @section, params[:question_id], :down)
     redirect_to @section
   end
 
   def sort_questions
-    SectionQuestion.apply_sort!({ section_id: @section.id }, :question, params[:sort_by], params[:direction])
+    Membership.sort(:section_questions, @section, params[:sort_by], params[:direction])
     redirect_to @section
   end
 

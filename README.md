@@ -174,6 +174,31 @@ Remembers:
 
 Deployed using [Kamal](https://kamal-deploy.org/) with background job processing, automated backups, and email delivery via SMTP.
 
+## MCP Server
+
+The app has a built-in [MCP](https://modelcontextprotocol.io) server at `/mcp`, so an MCP
+client like Claude Code can do what you do in the web app: browse and search, submit forms and
+answers, edit responses (moving a response's date moves its answers), manage remembers, build
+forms, sections, questions, metrics, alerts and reports, arrange and move items, delete, and
+send reports. Settings, backups and login are not exposed.
+
+It uses Streamable HTTP (stateless, JSON responses) and a per-user API token. Only a SHA-256
+digest of each token is stored.
+
+```bash
+# Create a token (in production: bin/kamal app exec -i "bin/rails 'api_tokens:create[NAME,claude-code]'")
+bin/rails 'api_tokens:create[your_user_name,claude-code]'
+bin/rails api_tokens:list
+bin/rails 'api_tokens:revoke[ID]'
+
+# Connect Claude Code
+claude mcp add --transport http routine https://your-host/mcp \
+  --header "Authorization: Bearer rt_..."
+```
+
+Tools live in `app/mcp/routine_mcp/tools`. They share their business logic with the web
+controllers through `app/services`, so both behave the same way.
+
 ## Technical Architecture
 
 ### Key Technologies

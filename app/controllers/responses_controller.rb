@@ -48,28 +48,17 @@ class ResponsesController < ApplicationController
   end
 
   def update
-    # Handle answer updates
-    if params[:response][:answers_attributes]
-      params[:response][:answers_attributes].each do |index, answer_params|
-        next if answer_params[:_destroy] == "1"
-
-        answer = @response.answers.find(answer_params[:id])
-        answer.update!(answer_params.except(:id))
-      end
-    end
-
-    # Handle datetime update if provided
-    if params[:response][:response_datetime].present?
-      begin
-        new_datetime = Time.zone.parse(params[:response][:response_datetime])
-        @response.update_timestamp!(new_datetime) if new_datetime
-      rescue ArgumentError => e
-        Rails.logger.warn "Invalid datetime format: #{params[:response][:response_datetime]} - #{e.message}"
-        flash[:alert] = "Invalid date format. Please use a valid date and time."
-      rescue StandardError => e
-        Rails.logger.error "Failed to update response timestamp: #{e.message}"
-        flash[:alert] = "Failed to update response date and time. Please try again."
-      end
+    answers = response_params[:answers_attributes]&.to_h&.values || []
+    begin
+      ResponseUpdate.call(response: @response, answers: answers, datetime: params[:response][:response_datetime])
+    rescue ResponseUpdate::InvalidDatetime => e
+      Rails.logger.warn e.message
+      flash[:alert] = "Invalid date format. Please use a valid date and time."
+    rescue ActiveRecord::RecordNotFound
+      raise
+    rescue StandardError => e
+      Rails.logger.error "Failed to update response: #{e.message}"
+      flash[:alert] = "Failed to update response date and time. Please try again."
     end
 
     # Handle other response attributes

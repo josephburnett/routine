@@ -53,37 +53,12 @@ class FormsController < ApplicationController
   end
 
   def submit_survey
-    @response = Response.new(form: @form, user: current_user, namespace: @form.namespace)
-
-    if @response.save
-      # Process answers for each question across all sections
-      params[:answers]&.each do |question_id, answer_data|
-        question = Question.find(question_id)
-        answer = @response.answers.build(
-          question: question,
-          user: current_user,
-          answer_type: question.question_type,
-          namespace: @form.namespace
-        )
-
-        case question.question_type
-        when "string"
-          answer.string_value = answer_data["value"]
-        when "number"
-          answer.number_value = answer_data["value"].to_f
-        when "bool"
-          answer.bool_value = answer_data["value"] == "1"
-        when "range"
-          answer.number_value = answer_data["value"].to_f
-        end
-
-        answer.save
-      end
-
-      # Clear the draft after successful submission
-      FormDraft.where(user: current_user, form: @form).destroy_all
+    answers = (params[:answers]&.to_unsafe_h || {}).transform_values { |data| data["value"] }
+    if SurveySubmission.call(form: @form, user: current_user, answers: answers)
       redirect_to @form, notice: "Form submitted successfully"
     else
+      @response = Response.new
+      @draft = FormDraft.find_or_initialize_by(user: current_user, form: @form)
       render :survey, alert: "Error submitting form"
     end
   end
@@ -104,20 +79,17 @@ class FormsController < ApplicationController
     @form = current_user.forms.find(params[:id])
     @section = current_user.sections.find(params[:section_id])
 
-    if FormSection.exists?(form: @form, section: @section)
-      redirect_to @form, alert: "Section is already in this form"
-    else
-      FormSection.create!(form: @form, section: @section, position: FormSection.next_position_for(form_id: @form.id))
+    if Membership.add(:form_sections, @form, @section)
       redirect_to @form, notice: "Section added to form successfully"
+    else
+      redirect_to @form, alert: "Section is already in this form"
     end
   end
 
   def remove_section
     @section = current_user.sections.find(params[:section_id])
 
-    join = FormSection.find_by(form: @form, section: @section)
-    if join
-      join.destroy
+    if Membership.remove(:form_sections, @form, @section)
       redirect_to edit_form_path(@form), notice: "Section removed from form successfully"
     else
       redirect_to edit_form_path(@form), alert: "Section is not in this form"
@@ -125,19 +97,17 @@ class FormsController < ApplicationController
   end
 
   def move_section_up
-    join = FormSection.find_by!(form: @form, section_id: params[:section_id])
-    join.move_higher!
+    move_or_404(:form_sections, @form, params[:section_id], :up)
     redirect_to @form
   end
 
   def move_section_down
-    join = FormSection.find_by!(form: @form, section_id: params[:section_id])
-    join.move_lower!
+    move_or_404(:form_sections, @form, params[:section_id], :down)
     redirect_to @form
   end
 
   def sort_sections
-    FormSection.apply_sort!({ form_id: @form.id }, :section, params[:sort_by], params[:direction])
+    Membership.sort(:form_sections, @form, params[:sort_by], params[:direction])
     redirect_to @form
   end
 

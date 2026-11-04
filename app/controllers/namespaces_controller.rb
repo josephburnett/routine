@@ -19,23 +19,12 @@ class NamespacesController < ApplicationController
       Rails.logger.info "Entity params: #{entity_params.inspect}"
       Rails.logger.info "Skip cascade: #{skip_cascade}"
 
-      moved_count = 0
-
-      # Process each entity type with cascading moves
-      entity_params.each do |entity_type, entity_ids|
-        next if entity_ids.blank?
-
-        Rails.logger.info "Processing #{entity_type}: #{entity_ids.inspect}"
-        model_class = entity_type.singularize.camelize.constantize
-        entities = model_class.where(id: entity_ids, user: current_user)
-
-        Rails.logger.info "Found #{entities.count} entities to update"
-
-        # Move entities and optionally cascade to related entities
-        entities.each do |entity|
-          moved_count += move_entity_with_cascade(entity, target_namespace, skip_cascade)
-        end
-      end
+      moved_count = NamespaceMove.call(
+        user: current_user,
+        entities: entity_params.respond_to?(:to_unsafe_h) ? entity_params.to_unsafe_h : entity_params,
+        target_namespace: target_namespace,
+        cascade: !skip_cascade
+      )
 
       Rails.logger.info "Total moved count: #{moved_count}"
 
@@ -53,72 +42,6 @@ class NamespacesController < ApplicationController
   end
 
   private
-
-  def move_entity_with_cascade(entity, target_namespace, skip_cascade = false)
-    count = 0
-
-    # Move the entity itself
-    entity.update!(namespace: target_namespace)
-    count += 1
-
-    # If skip_cascade is true, only move the selected entity
-    return count if skip_cascade
-
-    case entity
-    when Form
-      # Cascade: Move all Responses
-      entity.responses.each do |response|
-        response.update!(namespace: target_namespace)
-        count += 1
-
-        # Also move Answers associated with the Response
-        response.answers.each do |answer|
-          answer.update!(namespace: target_namespace)
-          count += 1
-        end
-      end
-
-      # Cascade: Move all Sections associated with the Form
-      entity.sections.each do |section|
-        section.update!(namespace: target_namespace)
-        count += 1
-
-        # Move Questions in this Section and their Answers
-        section.questions.each do |question|
-          question.update!(namespace: target_namespace)
-          count += 1
-
-          # Move Answers for this Question
-          question.answers.each do |answer|
-            answer.update!(namespace: target_namespace)
-            count += 1
-          end
-        end
-      end
-
-    when Section
-      # Cascade: Move all Questions in this Section
-      entity.questions.each do |question|
-        question.update!(namespace: target_namespace)
-        count += 1
-
-        # Move Answers for this Question
-        question.answers.each do |answer|
-          answer.update!(namespace: target_namespace)
-          count += 1
-        end
-      end
-
-    when Question
-      # Cascade: Move all Answers for this Question
-      entity.answers.each do |answer|
-        answer.update!(namespace: target_namespace)
-        count += 1
-      end
-    end
-
-    count
-  end
 
   def find_namespace
     namespace_name = params[:id] == "root" ? "" : params[:id]

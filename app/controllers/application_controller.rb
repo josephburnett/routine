@@ -20,5 +20,12 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  # Moves a linked child up or down; 404 if it isn't linked to the parent.
+  def move_or_404(relation, parent, child_id, direction)
+    Membership.move(relation, parent, child_id, direction)
+  rescue Membership::Error
+    raise ActiveRecord::RecordNotFound
+  end
+
   helper_method :current_user, :logged_in?
 end

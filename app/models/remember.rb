@@ -91,6 +91,14 @@ class Remember < ApplicationRecord
     update!(decay: value)
   end
 
+  # Set decay, kept between the user's minimum decay and 1.0. Returns the value used.
+  def set_decay_within_limits!(value)
+    min_decay = user.user_setting&.remember_min_decay || 0.01
+    value = value.to_f.clamp(min_decay, 1.0)
+    set_decay!(value)
+    value
+  end
+
   # Bump up - double the decay (max 1.0), set to floating
   def bump_up!
     jitter = user.user_setting&.remember_decay_jitter || 0.2

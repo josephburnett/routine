@@ -99,6 +99,10 @@ Rails.application.routes.draw do
   get "/login", to: "sessions#new"
   delete "/logout", to: "sessions#destroy"
 
+  # MCP endpoint for Claude Code (see McpController)
+  post "/mcp", to: "mcp#handle"
+  match "/mcp", to: "mcp#not_allowed", via: [ :get, :delete ]
+
   # Settings
   get "/settings", to: "settings#show"
   patch "/settings", to: "settings#update"

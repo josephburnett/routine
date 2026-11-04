@@ -1,6 +1,5 @@
 class ReportsController < ApplicationController
   include NamespaceBrowsing
-  require "timeout"
 
   before_action :require_login
   before_action :find_report, only: [ :edit, :update, :soft_delete, :send_now, :move_alert_up, :move_alert_down, :sort_alerts, :move_metric_up, :move_metric_down, :sort_metrics ]
@@ -59,40 +58,11 @@ class ReportsController < ApplicationController
   def create
     @report = current_user.reports.build(report_params)
 
-    # Handle interval_config processing
-    if params[:interval_config].present?
-      case params[:report][:interval_type]
-      when "weekly"
-        if params[:interval_config][:days].present?
-          @report.interval_config = { "days" => params[:interval_config][:days].reject(&:blank?) }
-        else
-          @report.interval_config = { "days" => [] }
-        end
-      when "monthly"
-        if params[:interval_config][:day_of_month].present?
-          @report.interval_config = { "day_of_month" => params[:interval_config][:day_of_month].to_i }
-        else
-          @report.interval_config = {}
-        end
-      end
-    else
-      @report.interval_config = {}
-    end
+    ReportConfig.apply_interval_config(@report, params.dig(:report, :interval_type), submitted_interval_config)
 
     if @report.save
-      # Handle alert associations
-      if params[:alert_ids].present?
-        params[:alert_ids].each_with_index do |alert_id, idx|
-          @report.report_alerts.create(alert_id: alert_id, position: idx) if alert_id.present?
-        end
-      end
-
-      # Handle metric associations
-      if params[:metric_ids].present?
-        params[:metric_ids].each_with_index do |metric_id, idx|
-          @report.report_metrics.create(metric_id: metric_id, position: idx) if metric_id.present?
-        end
-      end
+      ReportConfig.replace_contents(@report, user: current_user,
+                                    alert_ids: params[:alert_ids] || [], metric_ids: params[:metric_ids] || [])
 
       redirect_to @report, notice: "Report created successfully"
     else
@@ -109,42 +79,11 @@ class ReportsController < ApplicationController
   end
 
   def update
-    # Handle interval_config processing
-    if params[:interval_config].present?
-      case params[:report][:interval_type]
-      when "weekly"
-        if params[:interval_config][:days].present?
-          @report.interval_config = { "days" => params[:interval_config][:days].reject(&:blank?) }
-        else
-          @report.interval_config = { "days" => [] }
-        end
-      when "monthly"
-        if params[:interval_config][:day_of_month].present?
-          @report.interval_config = { "day_of_month" => params[:interval_config][:day_of_month].to_i }
-        else
-          @report.interval_config = {}
-        end
-      end
-    else
-      @report.interval_config = {}
-    end
+    ReportConfig.apply_interval_config(@report, params.dig(:report, :interval_type), submitted_interval_config)
 
     if @report.update(report_params)
-      # Update alert associations
-      @report.report_alerts.destroy_all
-      if params[:alert_ids].present?
-        params[:alert_ids].each_with_index do |alert_id, idx|
-          @report.report_alerts.create(alert_id: alert_id, position: idx) if alert_id.present?
-        end
-      end
-
-      # Update metric associations
-      @report.report_metrics.destroy_all
-      if params[:metric_ids].present?
-        params[:metric_ids].each_with_index do |metric_id, idx|
-          @report.report_metrics.create(metric_id: metric_id, position: idx) if metric_id.present?
-        end
-      end
+      ReportConfig.replace_contents(@report, user: current_user,
+                                    alert_ids: params[:alert_ids] || [], metric_ids: params[:metric_ids] || [])
 
       redirect_to @report, notice: "Report updated successfully"
     else
@@ -155,55 +94,37 @@ class ReportsController < ApplicationController
   end
 
   def send_now
-    begin
-      # Check if report has content to send
-      unless @report.has_content_to_send?
-        redirect_to @report, alert: "Cannot send report: no content to send (no active alerts or metrics)"
-        return
-      end
-
-      # Send the report
-      ReportMailer.scheduled_report(@report).deliver_now
-      @report.update!(last_sent_at: Time.current)
-
-      redirect_to @report, notice: "Report sent successfully! Check your email."
-    rescue => e
-      Rails.logger.error "Failed to send report #{@report.name} (ID: #{@report.id}): #{e.message}"
-      redirect_to @report, alert: "Failed to send report: #{e.message}"
-    end
+    ok, message = ReportConfig.send_now(@report)
+    redirect_to @report, (ok ? :notice : :alert) => message
   end
 
   def move_alert_up
-    join = @report.report_alerts.find_by!(alert_id: params[:alert_id])
-    join.move_higher!
+    move_or_404(:report_alerts, @report, params[:alert_id], :up)
     redirect_to @report
   end
 
   def move_alert_down
-    join = @report.report_alerts.find_by!(alert_id: params[:alert_id])
-    join.move_lower!
+    move_or_404(:report_alerts, @report, params[:alert_id], :down)
     redirect_to @report
   end
 
   def sort_alerts
-    ReportAlert.apply_sort!({ report_id: @report.id }, :alert, params[:sort_by], params[:direction])
+    Membership.sort(:report_alerts, @report, params[:sort_by], params[:direction])
     redirect_to @report
   end
 
   def move_metric_up
-    join = @report.report_metrics.find_by!(metric_id: params[:metric_id])
-    join.move_higher!
+    move_or_404(:report_metrics, @report, params[:metric_id], :up)
     redirect_to @report
   end
 
   def move_metric_down
-    join = @report.report_metrics.find_by!(metric_id: params[:metric_id])
-    join.move_lower!
+    move_or_404(:report_metrics, @report, params[:metric_id], :down)
     redirect_to @report
   end
 
   def sort_metrics
-    ReportMetric.apply_sort!({ report_id: @report.id }, :metric, params[:sort_by], params[:direction])
+    Membership.sort(:report_metrics, @report, params[:sort_by], params[:direction])
     redirect_to @report
   end
 
@@ -218,27 +139,11 @@ class ReportsController < ApplicationController
     @report = current_user.reports.not_deleted.find(params[:id])
   end
 
+  def submitted_interval_config
+    params[:interval_config].present? ? params[:interval_config].to_unsafe_h : nil
+  end
+
   def report_params
     params.require(:report).permit(:name, :time_of_day, :interval_type, :namespace, :remember_namespace, interval_config: {})
-  end
-
-  def safe_has_content_to_send?
-    # Check metrics first (fast operation)
-    return true if @report.metrics.any?
-
-    # Only check active alerts if no metrics (potentially slow operation)
-    begin
-      Timeout.timeout(3) { @report.active_alerts.any? }
-    rescue Timeout::Error, StandardError => e
-      Rails.logger.warn "Report #{@report.id} active_alerts check failed: #{e.message}"
-      false
-    end
-  end
-
-  def safe_should_send_now?
-    Timeout.timeout(3) { @report.should_send_now? }
-  rescue Timeout::Error, StandardError => e
-    Rails.logger.warn "Report #{@report.id} should_send_now failed: #{e.message}"
-    false
   end
 end

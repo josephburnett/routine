@@ -14,4 +14,5 @@ class User < ApplicationRecord
   has_many :reports
   has_many :remembers
   has_one :user_setting, dependent: :destroy
+  has_many :api_tokens, dependent: :destroy
 end
