@@ -743,15 +743,24 @@ tr:hover {
   max-width: 40rem;
 }
 
+/* Presentation mode: a compact header like the report view, so the card
+   gets the screen. */
+.deck-page .back-link {
+  margin-bottom: 1.5rem;
+}
+
 .deck-header {
-  margin: 1rem 0 1.25rem;
+  margin-bottom: 1.25rem;
+  text-align: center;
 }
 
 .deck-header h1 {
-  margin-bottom: 0.25rem;
+  margin: 0;
+  font-size: 1.5rem;
 }
 
 .deck-subtitle {
+  margin: 0.5rem 0 0;
   color: var(--gray-500);
   font-size: 0.9rem;
 }
