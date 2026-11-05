@@ -106,7 +106,6 @@ class RemembersControllerTest < ActionDispatch::IntegrationTest
     user.create_user_setting!(
       remember_daily_decay: 0.05,
       remember_min_decay: 0.1,
-      remember_soft_min_decay: 0.1,
       backup_frequency: "daily"
     )
 

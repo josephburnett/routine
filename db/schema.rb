@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_11_04_161315) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_05_120000) do
   create_table "alert_status_caches", force: :cascade do |t|
     t.integer "alert_id", null: false
     t.boolean "is_activated", default: false
@@ -271,7 +271,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_04_161315) do
     t.string "backup_frequency", default: "daily"
     t.float "remember_daily_decay", default: 0.05, null: false
     t.float "remember_min_decay", default: 0.01, null: false
-    t.float "remember_soft_min_decay", default: 0.05, null: false
     t.float "remember_decay_jitter", default: 0.2, null: false
     t.index ["user_id"], name: "index_user_settings_on_user_id"
   end

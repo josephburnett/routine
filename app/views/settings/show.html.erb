@@ -110,7 +110,7 @@
         <%= form.label :remember_min_decay, "Minimum Decay" %>
         <%= form.number_field :remember_min_decay, step: 0.01, min: 0.0, max: 0.99, required: true %>
         <small style="display: block; color: #666; margin-top: 0.25rem;">
-          Lowest decay value a remember can reach (default: 0.01). At 0.01, it shows ~1% of days.
+          Lowest decay value a remember can reach (default: 0.01). Each remember stops decaying somewhere between this and 1.5× this. Raising it lifts lower remembers into that range on the next daily decay.
         </small>
       </div>
     </div>

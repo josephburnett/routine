@@ -97,23 +97,89 @@ class RememberTest < ActiveSupport::TestCase
     assert_in_delta 0.05, decay_amount, 0.015  # 0.05 ± 0.01 (allowing for 20% jitter)
   end
 
-  test "apply_decay! does not go below hard min decay (default 0.01)" do
-    remember = remembers(:floating_low)
-    remember.update!(decay: 0.02)  # Below soft min, but should still clamp to hard min
-
-    # Force decay by setting a very low personal floor
-    user = remember.user
+  test "apply_decay! does not go below the minimum" do
+    user = users(:one)
     user.create_user_setting!(
       remember_daily_decay: 0.05,
-      remember_min_decay: 0.01,
-      remember_soft_min_decay: 0.01,  # Same as hard min, so floor is always 0.01
+      remember_min_decay: 0.10,
       remember_decay_jitter: 0.0,
       backup_frequency: "daily"
     )
+    remember = remembers(:floating_low)
+    remember.update!(decay: 0.12)
+    # Pretend this remember's personal floor is the minimum, so it keeps decaying
+    remember.define_singleton_method(:personal_decay_floor) { 0.10 }
 
     remember.apply_decay!
-    assert_equal 0.01, remember.decay
+    assert_equal 0.10, remember.decay
 
+    user.user_setting.destroy
+  end
+
+  test "apply_decay! lifts remembers below a raised minimum to a spread up to 1.5x it" do
+    user = users(:one)
+    user.create_user_setting!(remember_min_decay: 0.10, backup_frequency: "daily")
+    remembers = 20.times.map { |i| Remember.create!(user: user, description: "Low #{i}", decay: 0.01) }
+
+    remembers.each(&:apply_decay!)
+    values = remembers.map { |r| r.reload.decay }
+
+    assert values.all? { |v| v >= 0.10 && v <= 0.15 }, "lifted values should be in 0.10..0.15: #{values}"
+    assert values.uniq.size > 1, "lifted values should be shuffled, not all the same"
+    assert remembers.all? { |r| r.state == "floating" }
+
+    user.user_setting.destroy
+  end
+
+  test "apply_decay! doesn't lift pinned remembers" do
+    user = users(:one)
+    user.create_user_setting!(remember_min_decay: 0.10, backup_frequency: "daily")
+    pinned = remembers(:pinned_remember)
+    pinned.update!(decay: 0.02)
+
+    pinned.apply_decay!
+    assert_equal 0.02, pinned.reload.decay
+
+    user.user_setting.destroy
+  end
+
+  test "lift_to_minimum! only moves floating remembers below the minimum" do
+    user = users(:one)
+    user.create_user_setting!(remember_min_decay: 0.10, backup_frequency: "daily")
+    low = remembers(:floating_low)
+    low.update!(decay: 0.02)
+    high = remembers(:floating_high)
+    high.update!(decay: 0.5)
+
+    assert low.lift_to_minimum!
+    assert_not high.lift_to_minimum!
+    assert_includes 0.10..0.15, low.reload.decay
+    assert_equal 0.5, high.reload.decay
+
+    user.user_setting.destroy
+  end
+
+  test "min_decay is the user's setting and soft_min_decay is 1.5x it" do
+    user = users(:one)
+    user.create_user_setting!(remember_min_decay: 0.1, backup_frequency: "daily")
+    remember = remembers(:floating_high)
+
+    assert_equal 0.1, remember.min_decay
+    assert_in_delta 0.15, remember.soft_min_decay, 1e-9
+
+    user.user_setting.destroy
+  end
+
+  test "min_decay defaults to 1% and soft_min_decay to 1.5%" do
+    remember = remembers(:floating_high)
+    assert_equal 0.01, remember.min_decay
+    assert_in_delta 0.015, remember.soft_min_decay, 1e-9
+  end
+
+  test "soft_min_decay is capped at 1.0" do
+    user = users(:one)
+    user.create_user_setting!(remember_min_decay: 0.9, backup_frequency: "daily")
+    assert_equal 1.0, remembers(:floating_high).soft_min_decay
     user.user_setting.destroy
   end
 
@@ -121,8 +187,7 @@ class RememberTest < ActiveSupport::TestCase
     user = users(:one)
     user.create_user_setting!(
       remember_daily_decay: 0.05,
-      remember_min_decay: 0.01,
-      remember_soft_min_decay: 0.10,
+      remember_min_decay: 0.10,
       remember_decay_jitter: 0.0,
       backup_frequency: "daily"
     )
@@ -145,23 +210,29 @@ class RememberTest < ActiveSupport::TestCase
     user.user_setting.destroy
   end
 
-  test "personal_decay_floor is between hard and soft min" do
+  test "personal_decay_floor is between the minimum and 1.5x the minimum" do
     user = users(:one)
-    user.create_user_setting!(
-      remember_daily_decay: 0.05,
-      remember_min_decay: 0.01,
-      remember_soft_min_decay: 0.10,
-      remember_decay_jitter: 0.0,
-      backup_frequency: "daily"
-    )
+    user.create_user_setting!(remember_min_decay: 0.10, backup_frequency: "daily")
 
-    remember = remembers(:floating_high)
-    floor = remember.personal_decay_floor
-
-    assert floor >= 0.01, "Floor should be >= hard min"
-    assert floor <= 0.10, "Floor should be <= soft min"
+    floor = remembers(:floating_high).personal_decay_floor
+    assert floor >= 0.10, "Floor should be >= the minimum"
+    assert floor <= 0.15, "Floor should be <= 1.5x the minimum"
 
     user.user_setting.destroy
+  end
+
+  test "personal_decay_floor doesn't depend on the process's hash seed" do
+    remember = remembers(:floating_high)
+    expected = (Zlib.crc32(remember.id.to_s) % 10000) / 10000.0
+    min = remember.min_decay
+    assert_in_delta min + (remember.soft_min_decay - min) * expected, remember.personal_decay_floor, 1e-9
+  end
+
+  test "visible_today? doesn't depend on the process's hash seed" do
+    remember = remembers(:floating_high)
+    remember.update!(decay: 0.5)
+    threshold = (Zlib.crc32("#{remember.id}-#{Date.current}") % 10000) / 10000.0
+    assert_equal threshold < 0.5, remember.visible_today?
   end
 
   test "personal_decay_floor is stable for same remember" do
@@ -175,8 +246,7 @@ class RememberTest < ActiveSupport::TestCase
     user = users(:one)
     user.create_user_setting!(
       remember_daily_decay: 0.1,
-      remember_min_decay: 0.02,
-      remember_soft_min_decay: 0.02,  # Same as hard to simplify test
+      remember_min_decay: 0.2,
       remember_decay_jitter: 0.0,     # No jitter for predictable test
       backup_frequency: "daily"
     )
@@ -188,9 +258,9 @@ class RememberTest < ActiveSupport::TestCase
     assert_in_delta 0.4, remember.decay, 0.001  # 0.5 - 0.1 = 0.4
 
     # Test hard min decay from settings
-    remember.update!(decay: 0.05)
+    remember.update!(decay: 0.25)
     remember.apply_decay!
-    assert_equal 0.02, remember.decay  # 0.05 - 0.1 = -0.05, clamped to 0.02 (user's hard min)
+    assert_equal 0.2, remember.decay  # 0.25 - 0.1 = 0.15, clamped to 0.2 (user's hard min)
 
     user.user_setting.destroy
   end
@@ -236,7 +306,6 @@ class RememberTest < ActiveSupport::TestCase
     user.create_user_setting!(
       remember_daily_decay: 0.05,
       remember_min_decay: 0.1,
-      remember_soft_min_decay: 0.1,
       backup_frequency: "daily"
     )
 
@@ -297,7 +366,6 @@ class RememberTest < ActiveSupport::TestCase
     user.create_user_setting!(
       remember_daily_decay: 0.05,
       remember_min_decay: 0.1,
-      remember_soft_min_decay: 0.1,
       backup_frequency: "daily"
     )
 

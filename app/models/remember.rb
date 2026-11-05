@@ -3,6 +3,11 @@ class Remember < ApplicationRecord
 
   STATES = %w[pinned floating retired].freeze
 
+  DEFAULT_MIN_DECAY = 0.01
+  # The soft minimum is this many times the minimum. Remembers stop decaying at a
+  # personal floor between the two.
+  SOFT_MIN_FACTOR = 1.5
+
   belongs_to :user
 
   validates :description, presence: true
@@ -27,7 +32,8 @@ class Remember < ApplicationRecord
     return false if state == "retired" || decay == 0.0
 
     # Create a daily seed from the Remember ID and today's date
-    daily_seed = "#{id}-#{Date.current}".hash.abs
+    # (CRC32, not String#hash, which changes every time the app restarts)
+    daily_seed = Zlib.crc32("#{id}-#{Date.current}")
 
     # Normalize to 0.0-1.0 range
     threshold = (daily_seed % 10000) / 10000.0
@@ -38,14 +44,15 @@ class Remember < ApplicationRecord
 
   # Apply daily decay with jitter to prevent thundering herd
   # - Adds random jitter to decay amount (±jitter%)
-  # - Stops decaying at personal_decay_floor (between soft and hard min)
-  # - Hard minimum is an invariant floor
+  # - Stops decaying at personal_decay_floor (between min_decay and soft_min_decay)
+  # - Lifts a remember below the minimum to a random value between the minimum
+  #   and the soft minimum, so they don't all land on the same value
   def apply_decay!
     return if state == "pinned" || state == "retired"
+    return if lift_to_minimum!
 
     settings = user.user_setting
     daily_decay = settings&.remember_daily_decay || 0.05
-    hard_min = settings&.remember_min_decay || 0.01
     jitter = settings&.remember_decay_jitter || 0.2
 
     # Stop decaying if we've reached this remember's personal floor
@@ -56,22 +63,37 @@ class Remember < ApplicationRecord
     actual_decay = daily_decay * jitter_factor
 
     # Clamp to hard minimum (invariant)
-    new_decay = [ decay - actual_decay, hard_min ].max
+    new_decay = [ decay - actual_decay, min_decay ].max
     update!(decay: new_decay)
   end
 
-  # Each remember has a personal floor between hard_min and soft_min
+  # If this floating remember is below the minimum (e.g. after the minimum was
+  # raised), move it to a random value between min_decay and soft_min_decay.
+  # Returns true if it moved.
+  def lift_to_minimum!
+    return false unless state == "floating" && decay < min_decay
+
+    update!(decay: min_decay + (soft_min_decay - min_decay) * rand)
+    true
+  end
+
+  # Each remember has a personal floor between min_decay and soft_min_decay
   # Based on ID hash for stable, distributed stopping points
   def personal_decay_floor
-    settings = user.user_setting
-    hard_min = settings&.remember_min_decay || 0.01
-    soft_min = settings&.remember_soft_min_decay || 0.05
+    # A stable value between 0 and 1 based on this remember's ID
+    hash_value = (Zlib.crc32(id.to_s) % 10000) / 10000.0
 
-    # Create a stable value between 0 and 1 based on this remember's ID
-    hash_value = (id.to_s.hash.abs % 10000) / 10000.0
+    min_decay + (soft_min_decay - min_decay) * hash_value
+  end
 
-    # Interpolate between hard_min and soft_min
-    hard_min + (soft_min - hard_min) * hash_value
+  # The lowest decay a remember can have: the user's Minimum Decay setting.
+  def min_decay
+    user.user_setting&.remember_min_decay || DEFAULT_MIN_DECAY
+  end
+
+  # The top of the personal-floor range: 1.5x the minimum (capped at 1.0).
+  def soft_min_decay
+    [ min_decay * SOFT_MIN_FACTOR, 1.0 ].min
   end
 
   # Pin this remember - freeze decay at current value
@@ -81,7 +103,6 @@ class Remember < ApplicationRecord
 
   # Float this remember - resume daily decay
   def float!
-    min_decay = user.user_setting&.remember_min_decay || 0.01
     new_decay = [ decay, min_decay ].max
     update!(state: "floating", decay: new_decay)
   end
@@ -91,9 +112,8 @@ class Remember < ApplicationRecord
     update!(decay: value)
   end
 
-  # Set decay, kept between the user's minimum decay and 1.0. Returns the value used.
+  # Set decay, kept between min_decay and 1.0. Returns the value used.
   def set_decay_within_limits!(value)
-    min_decay = user.user_setting&.remember_min_decay || 0.01
     value = value.to_f.clamp(min_decay, 1.0)
     set_decay!(value)
     value
@@ -107,9 +127,8 @@ class Remember < ApplicationRecord
     update!(state: "floating", decay: new_decay)
   end
 
-  # Bump down - halve the decay (min from user settings), set to floating if not already
+  # Bump down - halve the decay (down to min_decay), set to floating if not already
   def bump_down!
-    min_decay = user.user_setting&.remember_min_decay || 0.01
     jitter = user.user_setting&.remember_decay_jitter || 0.2
     jitter_factor = 1.0 + (rand * 2 - 1) * jitter
     new_decay = [ decay / 2 * jitter_factor, min_decay ].max
