@@ -2,9 +2,10 @@ import { Controller } from "@hotwired/stimulus"
 
 // Shows today's remembers one card at a time. Tap a card to flip it to its
 // background notes; swipe, use the arrow keys, or the Prev/Next buttons to
-// move between cards. Without JS the page shows every card in a plain list.
+// move between cards. After the last card comes an "All done!" panel. Without
+// JS the page shows every card in a plain list.
 export default class extends Controller {
-  static targets = [ "card", "controls", "counter", "progress", "prev", "next" ]
+  static targets = [ "card", "done", "controls", "counter", "progress", "prev", "next" ]
 
   connect() {
     this.element.classList.add("deck--ready")
@@ -22,6 +23,10 @@ export default class extends Controller {
 
   prev() {
     this.go(this.index - 1, "prev")
+  }
+
+  restart() {
+    this.show(0, "prev")
   }
 
   flip(event) {
@@ -66,7 +71,8 @@ export default class extends Controller {
   }
 
   go(index, direction) {
-    if (index < 0 || index >= this.cardTargets.length) return
+    // index == cardTargets.length is the "All done!" panel
+    if (index < 0 || index > this.cardTargets.length) return
     this.show(index, direction)
   }
 
@@ -77,15 +83,20 @@ export default class extends Controller {
       if (i !== index) this.setFlipped(card, false)
     })
 
-    const card = this.cardTargets[index]
-    if (direction) card.classList.add(`deck-card--from-${direction}`)
+    const total = this.cardTargets.length
+    const done = index === total
+    this.doneTarget.hidden = !done
+    this.doneTarget.classList.remove("deck-card--from-next", "deck-card--from-prev")
+
+    const shown = done ? this.doneTarget : this.cardTargets[index]
+    if (direction) shown.classList.add(`deck-card--from-${direction}`)
 
     this.index = index
-    const total = this.cardTargets.length
-    this.counterTarget.textContent = `${index + 1} / ${total}`
-    this.progressTarget.style.width = `${((index + 1) / total) * 100}%`
+    this.counterTarget.textContent = done ? "Done" : `${index + 1} / ${total}`
+    // The bar fills as cards are finished, so it completes on the last swipe.
+    this.progressTarget.style.width = `${(index / total) * 100}%`
     this.prevTarget.disabled = index === 0
-    this.nextTarget.disabled = index === total - 1
+    this.nextTarget.disabled = done
   }
 
   setFlipped(card, flipped) {

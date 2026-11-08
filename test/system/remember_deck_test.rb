@@ -43,11 +43,37 @@ class RememberDeckTest < ApplicationSystemTestCase
     assert_selector ".deck-counter", text: "2 / 3"
     click_on "Next →"
     assert_selector ".deck-counter", text: "3 / 3"
-    assert_button "Next →", disabled: true
+    assert_button "Next →", disabled: false
 
     click_on "← Prev"
     assert_selector ".deck-counter", text: "2 / 3"
     assert_selector ".deck-card", count: 1, visible: true
+  end
+
+  test "moving past the last card shows All done, with a full progress bar" do
+    assert_no_selector ".deck-done", visible: true
+    3.times { click_on "Next →" }
+
+    assert_selector ".deck-done", text: "All done!", visible: true
+    assert_text "That's all 3 remembers for today."
+    assert_no_selector ".deck-card", visible: true
+    assert_selector ".deck-counter", text: "Done"
+    assert_button "Next →", disabled: true
+    assert_equal "100%", evaluate_script("document.querySelector('.deck-progress-bar').style.width")
+
+    click_on "← Prev"
+    assert_selector ".deck-counter", text: "3 / 3"
+    assert_no_selector ".deck-done", visible: true
+  end
+
+  test "swiping the last card shows All done, and Start over goes back to the first" do
+    2.times { click_on "Next →" }
+    swipe(-200)
+    assert_selector ".deck-done", text: "All done!", visible: true
+
+    click_on "Start over"
+    assert_selector ".deck-counter", text: "1 / 3"
+    assert_selector ".deck-card", text: "First deck card", visible: true
   end
 
   test "moving to another card unflips the one you left" do

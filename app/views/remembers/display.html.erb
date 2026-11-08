@@ -51,6 +51,14 @@
             <%= link_to "Details", remember_path(remember), class: "deck-details" %>
           </article>
         <% end %>
+
+        <%# Shown after the last card, in deck mode only %>
+        <div class="deck-done" data-remember-deck-target="done" hidden>
+          <span class="deck-done-check" aria-hidden="true">✓</span>
+          <h2 class="deck-done-title">All done!</h2>
+          <p class="deck-done-text">That's all <%= pluralize(@items.size, "remember") %> for today.</p>
+          <button type="button" class="btn btn-secondary" data-action="remember-deck#restart">Start over</button>
+        </div>
       </div>
 
       <div class="deck-controls" data-remember-deck-target="controls" hidden>

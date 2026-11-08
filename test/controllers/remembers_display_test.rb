@@ -57,6 +57,7 @@ class RemembersDisplayTest < ActionDispatch::IntegrationTest
 
     assert_select ".deck-controls[hidden]"
     assert_select ".deck-progress[hidden]"
+    assert_select ".deck-done[hidden]", text: /All done!/
     assert_select "button[data-action='remember-deck#prev']"
     assert_select "button[data-action='remember-deck#next']"
   end
