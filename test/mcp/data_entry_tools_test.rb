@@ -44,7 +44,12 @@ class McpDataEntryToolsTest < ActionDispatch::IntegrationTest
     web_answer = Answer.order(:id).last
 
     %i[answer_type string_value number_value bool_value namespace user_id question_id].each do |attr|
-      assert_equal web_answer.public_send(attr), mcp_answer.public_send(attr), attr
+      expected = web_answer.public_send(attr)
+      if expected.nil?
+        assert_nil mcp_answer.public_send(attr), attr
+      else
+        assert_equal expected, mcp_answer.public_send(attr), attr
+      end
     end
   end
 
