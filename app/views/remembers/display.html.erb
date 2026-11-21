@@ -11,6 +11,8 @@
 
   <% if @items.any? %>
     <section class="deck" data-controller="remember-deck"
+             data-remember-deck-key-value="<%= "remember-deck:#{current_user.id}:#{@current_namespace}" %>"
+             data-remember-deck-date-value="<%= Date.current.iso8601 %>"
              data-action="keydown@window->remember-deck#keydown"
              aria-label="Today's remembers">
       <div class="deck-progress" data-remember-deck-target="controls" hidden>
@@ -20,7 +22,7 @@
       <div class="deck-stage"
            data-action="pointerdown->remember-deck#pointerDown pointerup->remember-deck#pointerUp">
         <% @items.each_with_index do |remember, idx| %>
-          <article class="deck-card" data-remember-deck-target="card"
+          <article class="deck-card" data-remember-deck-target="card" data-remember-id="<%= remember.id %>"
                    aria-label="Remember <%= idx + 1 %> of <%= @items.size %>">
             <button type="button" class="deck-card-inner" aria-pressed="false"
                     data-action="remember-deck#flip">

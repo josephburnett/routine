@@ -16,6 +16,8 @@ class RememberDeckTest < ApplicationSystemTestCase
     fill_in "password", with: "password"
     click_on "Login"
     assert_no_current_path login_path
+    # Saved deck places live in localStorage; start each test fresh.
+    execute_script("localStorage.clear()")
 
     visit display_remembers_path(namespace: "deck")
     assert_selector ".deck.deck--ready"
@@ -100,6 +102,49 @@ class RememberDeckTest < ApplicationSystemTestCase
     swipe(200)
     assert_selector ".deck-counter", text: "1 / 3"
     assert_no_selector ".deck-card.is-flipped"
+  end
+
+  test "a reload returns to the same card the same day" do
+    click_on "Next →"
+    assert_selector ".deck-counter", text: "2 / 3"
+
+    refresh
+    assert_selector ".deck.deck--ready"
+    assert_selector ".deck-counter", text: "2 / 3"
+    assert_selector ".deck-card", text: "Another deck card", visible: true
+  end
+
+  test "a reload after finishing stays on All done" do
+    3.times { click_on "Next →" }
+    assert_selector ".deck-done", visible: true
+
+    refresh
+    assert_selector ".deck-done", text: "All done!", visible: true
+    assert_selector ".deck-counter", text: "Done"
+  end
+
+  test "a saved place from another day is ignored" do
+    3.times { click_on "Next →" }
+    key = find(".deck")["data-remember-deck-key-value"]
+    execute_script(<<~JS, key)
+      const saved = JSON.parse(localStorage.getItem(arguments[0]))
+      saved.date = "2000-01-01"
+      localStorage.setItem(arguments[0], JSON.stringify(saved))
+    JS
+
+    refresh
+    assert_selector ".deck-counter", text: "1 / 3"
+  end
+
+  test "a remember added after finishing is shown on reload" do
+    3.times { click_on "Next →" }
+    assert_selector ".deck-done", visible: true
+
+    Remember.create!(user: users(:one), namespace: "deck", state: "floating", decay: 1.0,
+                     description: "Brand new deck card")
+    refresh
+    assert_selector ".deck-card", text: "Brand new deck card", visible: true
+    assert_no_selector ".deck-done", visible: true
   end
 
   private

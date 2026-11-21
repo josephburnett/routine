@@ -4,13 +4,18 @@ import { Controller } from "@hotwired/stimulus"
 // background notes; swipe, use the arrow keys, or the Prev/Next buttons to
 // move between cards. After the last card comes an "All done!" panel. Without
 // JS the page shows every card in a plain list.
+//
+// The place in the deck is saved in localStorage for the day, so a reload
+// returns to the same card (or to "All done!"). A card that wasn't in the deck
+// when the place was saved (a new remember) is shown first instead.
 export default class extends Controller {
   static targets = [ "card", "done", "controls", "counter", "progress", "prev", "next" ]
+  static values = { key: String, date: String }
 
   connect() {
     this.element.classList.add("deck--ready")
     this.controlsTargets.forEach((el) => { el.hidden = false })
-    this.show(0)
+    this.show(this.savedIndex())
   }
 
   disconnect() {
@@ -97,6 +102,44 @@ export default class extends Controller {
     this.progressTarget.style.width = `${(index / total) * 100}%`
     this.prevTarget.disabled = index === 0
     this.nextTarget.disabled = done
+    this.save()
+  }
+
+  cardIds() {
+    return this.cardTargets.map((card) => card.dataset.rememberId)
+  }
+
+  // Where to open the deck: today's saved place, else the first card.
+  savedIndex() {
+    const saved = this.load()
+    if (!saved || saved.date !== this.dateValue) return 0
+
+    const ids = this.cardIds()
+    const newIndex = ids.findIndex((id) => !saved.ids.includes(id))
+    if (newIndex !== -1) return newIndex
+
+    if (saved.at === "done") return ids.length
+    const index = ids.indexOf(saved.at)
+    return index === -1 ? 0 : index
+  }
+
+  load() {
+    try {
+      return JSON.parse(localStorage.getItem(this.keyValue))
+    } catch {
+      return null
+    }
+  }
+
+  save() {
+    if (!this.keyValue) return
+    const ids = this.cardIds()
+    const at = this.index === ids.length ? "done" : ids[this.index]
+    try {
+      localStorage.setItem(this.keyValue, JSON.stringify({ date: this.dateValue, ids, at }))
+    } catch {
+      // Storage can be unavailable (private mode); the deck still works.
+    }
   }
 
   setFlipped(card, flipped) {
